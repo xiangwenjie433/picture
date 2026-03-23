@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>绘鸟AI - 专业电商AI作图工具</title>
+    <link rel="stylesheet" href="./assets/app.css" />
+  </head>
+  <body>
+    <div class="phone" id="phone">
+      <div class="status">
+        <strong>9:41</strong>
+        <span>5G · 100%</span>
+      </div>
+
+      <section class="scroll" id="scroll">
+        <header class="header">
+          <div class="title-row">
+            <div class="brand">
+              绘鸟<span>AI</span>
+            </div>
+            <button class="avatar" type="button" aria-label="打开个人中心" id="profileBtn">我</button>
+          </div>
+          <input id="searchInput" class="search" placeholder="搜索模板、场景、关键词..." />
+        </header>
+
+        <!-- Home -->
+        <div id="page-home" class="page page-home active" data-tab-page="home">
+          <div class="section">
+            <div class="mt-hero">
+              <div class="mt-hero-top">
+                <span class="mt-badge">AI 上新</span>
+                <span class="mt-sub">电商设计一站式</span>
+              </div>
+              <h2>AI作图神器，10秒生成电商爆款图</h2>
+              <p>无需模特、无需摄影师、无需场地。一键实现真人换模特、场景重构，商拍成本降低90%，效率提升100倍。</p>
+              <div class="mt-hero-actions">
+                <button class="cta" type="button" id="startCreateBtn">立即创作</button>
+                <button class="cta ghost" type="button" id="viewCasesBtn">看模板</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="title">
+              <h3>常用工具</h3>
+              <span class="hint">拖一点就能出图</span>
+            </div>
+            <div class="tool-grid mt-tool-grid" id="featureGrid">
+              <div class="tool-page">
+                <button class="tool-item" type="button" data-feature="fitting">
+                  <div class="tool-ico i1">服</div>
+                  <span>服装套图</span>
+                </button>
+                <button class="tool-item" type="button" data-feature="fitting">
+                  <div class="tool-ico i2">真</div>
+                  <span>真人换模特</span>
+                </button>
+                <button class="tool-item" type="button" data-feature="pose">
+                  <div class="tool-ico i3">场</div>
+                  <span>模特换场景</span>
+                </button>
+                <button class="tool-item" type="button" data-feature="fitting">
+                  <div class="tool-ico i4">衣</div>
+                  <span>AI穿衣</span>
+                </button>
+                <button class="tool-item" type="button" data-feature="pose">
+                  <div class="tool-ico i5">姿</div>
+                  <span>姿势裂变</span>
+                </button>
+                <button class="tool-item" type="button" data-feature="product">
+                  <div class="tool-ico i6">商</div>
+                  <span>商品套图</span>
+                </button>
+                <button class="tool-item" type="button" data-feature="product">
+                  <div class="tool-ico i7">视</div>
+                  <span>AI视频</span>
+                </button>
+                <button class="tool-item" type="button" data-feature="pose">
+                  <div class="tool-ico i8">风</div>
+                  <span>风格复制</span>
+                </button>
+              </div>
+              <div class="tool-page">
+                <button class="tool-item" type="button" data-feature="product">
+                  <div class="tool-ico i2">批</div>
+                  <span>批量生图</span>
+                </button>
+                <button class="tool-item placeholder" type="button" aria-hidden="true" tabindex="-1"></button>
+                <button class="tool-item placeholder" type="button" aria-hidden="true" tabindex="-1"></button>
+                <button class="tool-item placeholder" type="button" aria-hidden="true" tabindex="-1"></button>
+                <button class="tool-item placeholder" type="button" aria-hidden="true" tabindex="-1"></button>
+                <button class="tool-item placeholder" type="button" aria-hidden="true" tabindex="-1"></button>
+                <button class="tool-item placeholder" type="button" aria-hidden="true" tabindex="-1"></button>
+                <button class="tool-item placeholder" type="button" aria-hidden="true" tabindex="-1"></button>
+              </div>
+            </div>
+            <div class="tool-pager" id="toolPager">
+              <span class="dot active"></span>
+              <span class="dot"></span>
+            </div>
+            <div class="tool-page-tip">每页 8 个，左右滑动查看更多工具</div>
+          </div>
+
+          <div class="section">
+            <div class="promo-card">
+              <div>
+                <h4>限时体验会员能力</h4>
+                <p>高清导出 + 商用授权 + 批量处理，首月 6 折</p>
+              </div>
+              <a class="promo-link" href="javascript:void(0)" id="moreIndustryBtn">立即查看</a>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="title">
+              <h3>热门模板</h3>
+              <a class="link" href="javascript:void(0)">换一批</a>
+            </div>
+            <div class="hot-scroll">
+              <article class="hot-card">
+                <div class="hot-thumb t1"></div>
+                <div class="hot-title">小红书护肤主图</div>
+                <div class="hot-desc">干净白底 + 卖点标签</div>
+              </article>
+              <article class="hot-card">
+                <div class="hot-thumb t2"></div>
+                <div class="hot-title">服饰上新海报</div>
+                <div class="hot-desc">模特换装 + 活动价</div>
+              </article>
+              <article class="hot-card">
+                <div class="hot-thumb t3"></div>
+                <div class="hot-title">家居场景详情图</div>
+                <div class="hot-desc">生活方式氛围构图</div>
+              </article>
+              <article class="hot-card">
+                <div class="hot-thumb t4"></div>
+                <div class="hot-title">3C 参数对比图</div>
+                <div class="hot-desc">高转化电商详情首屏</div>
+              </article>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="title">
+              <h3>推荐灵感</h3>
+              <a class="link" href="javascript:void(0)">更多</a>
+            </div>
+            <div class="feed-list">
+              <article class="feed-card">
+                <div class="feed-cover t2"></div>
+                <div class="feed-body">
+                  <h4>春季上新素材包</h4>
+                  <p>20 套可商用模板，支持一键替换商品图</p>
+                </div>
+              </article>
+              <article class="feed-card">
+                <div class="feed-cover t3"></div>
+                <div class="feed-body">
+                  <h4>店铺首页活动头图</h4>
+                  <p>适配淘宝 / 抖音商城，快速批量改字改图</p>
+                </div>
+              </article>
+              <article class="feed-card">
+                <div class="feed-cover t4"></div>
+                <div class="feed-body">
+                  <h4>爆款详情页 9 宫格</h4>
+                  <p>自动排版卖点信息，减少设计重复劳动</p>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="info-panel">
+              <div class="info-text">
+                从服装到美妆，从单图到批量，全方位重构你的电商视觉生产流程。首页布局参考了美图设计师类产品的内容分发方式。
+              </div>
+            </div>
+          </div>
+
+          <div class="bottom-spacer"></div>
+        </div>
+
+        <!-- Template -->
+        <div id="page-template" class="page" data-tab-page="template">
+          <div class="section">
+            <div class="title">
+              <h3>案例广场</h3>
+              <a class="link" href="javascript:void(0)" id="caseFilterBtn">筛选：全部</a>
+            </div>
+            <div class="chip-row" id="caseChips">
+              <button class="chip active" type="button" data-chip="all">全部</button>
+              <button class="chip" type="button" data-chip="fashion">服装</button>
+              <button class="chip" type="button" data-chip="beauty">美妆</button>
+              <button class="chip" type="button" data-chip="home">家居</button>
+              <button class="chip" type="button" data-chip="3c">3C</button>
+            </div>
+            <div class="masonry">
+              <article class="m-card">
+                <div class="m-thumb t1"></div>
+                <div class="m-meta">
+                  <h4>服装商拍专区</h4>
+                  <p>平铺拍摄即可生成多角度商业视觉</p>
+                </div>
+              </article>
+              <article class="m-card">
+                <div class="m-thumb t2"></div>
+                <div class="m-meta">
+                  <h4>全品类爆款生成</h4>
+                  <p>美妆/家居/3C 细分风格模板</p>
+                </div>
+              </article>
+              <article class="m-card">
+                <div class="m-thumb t3"></div>
+                <div class="m-meta">
+                  <h4>动态场景重组</h4>
+                  <p>物理引擎光影重构，质感升级</p>
+                </div>
+              </article>
+              <article class="m-card">
+                <div class="m-thumb t4"></div>
+                <div class="m-meta">
+                  <h4>工业级批量工厂</h4>
+                  <p>百图并行处理，自动裁切下载</p>
+                </div>
+              </article>
+            </div>
+          </div>
+          <div class="section">
+            <button class="wide-btn" id="loadMoreCasesBtn" type="button">加载更多案例</button>
+          </div>
+        </div>
+
+        <!-- Create -->
+        <div id="page-create" class="page" data-tab-page="create">
+          <div class="section">
+            <div class="title">
+              <h3>创作工作台</h3>
+              <a class="link" href="javascript:void(0)" id="resetCreateBtn">清空</a>
+            </div>
+            <div class="upload-box" id="uploadBox">
+              <div class="upload-icon">+</div>
+              <div class="upload-title">上传原图</div>
+              <div class="upload-desc">支持 JPG / PNG，建议 1200px 以上</div>
+              <button class="soft-btn" id="mockUploadBtn" type="button">选择图片</button>
+            </div>
+            <div class="form-card">
+              <label class="form-item">
+                <span>创作模式</span>
+                <select id="createMode">
+                  <option>电商主图</option>
+                  <option>模特换装</option>
+                  <option>场景重构</option>
+                  <option>姿势裂变</option>
+                </select>
+              </label>
+              <label class="form-item">
+                <span>平台尺寸</span>
+                <select id="createSize">
+                  <option>1080 x 1080（通用）</option>
+                  <option>1242 x 1660（小红书）</option>
+                  <option>1080 x 1920（TikTok）</option>
+                  <option>1200 x 628（Amazon）</option>
+                </select>
+              </label>
+              <label class="form-item">
+                <span>风格描述</span>
+                <textarea id="createPrompt" rows="3" placeholder="例如：高级感、柔光、极简白底、突出产品卖点"></textarea>
+              </label>
+            </div>
+            <div class="action-row">
+              <button class="ghost-btn" id="previewBtn" type="button">生成预览</button>
+              <button class="primary-btn" id="exportBtn" type="button">导出高清</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Message -->
+        <div id="page-message" class="page" data-tab-page="message">
+          <div class="section">
+            <div class="title">
+              <h3>消息中心</h3>
+              <a class="link" href="javascript:void(0)" id="markAllReadBtn">全部已读</a>
+            </div>
+            <div class="msg-list" id="msgList">
+              <div class="msg-item">
+                <div class="msg-dot unread"></div>
+                <div class="msg-body">
+                  <div class="msg-title">你的“护肤品主图套版”已生成完成</div>
+                  <div class="msg-time">刚刚</div>
+                </div>
+              </div>
+              <div class="msg-item">
+                <div class="msg-dot unread"></div>
+                <div class="msg-body">
+                  <div class="msg-title">系统已为你推荐更匹配的模板</div>
+                  <div class="msg-time">5 分钟前</div>
+                </div>
+              </div>
+              <div class="msg-item">
+                <div class="msg-dot"></div>
+                <div class="msg-body">
+                  <div class="msg-title">会员限时活动：首月 6 折</div>
+                  <div class="msg-time">1 小时前</div>
+                </div>
+              </div>
+            </div>
+            <button class="wide-btn" id="clearMsgBtn" type="button">清空已读消息</button>
+          </div>
+        </div>
+
+        <!-- Profile -->
+        <div id="page-profile" class="page" data-tab-page="profile">
+          <div class="section">
+            <div class="profile-card">
+              <div class="profile-avatar">演</div>
+              <div class="profile-info">
+                <h3>演示用户</h3>
+                <p>ID: demo_user_001</p>
+              </div>
+              <button class="soft-btn" id="editProfileBtn" type="button">编辑</button>
+            </div>
+          </div>
+          <div class="section">
+            <div class="vip-banner">
+              <div class="vip-text">
+                <h4>绘鸟 AI 会员</h4>
+                <p>解锁高清导出、批量处理、商用授权</p>
+              </div>
+              <button class="primary-btn mini" id="openVipBtn" type="button">立即开通</button>
+            </div>
+          </div>
+          <div class="section">
+            <div class="menu-list">
+              <button class="menu-item" type="button" data-menu="history">
+                <span>创作历史</span><b>></b>
+              </button>
+              <button class="menu-item" type="button" data-menu="assets">
+                <span>我的素材</span><b>></b>
+              </button>
+              <button class="menu-item" type="button" data-menu="feedback">
+                <span>意见反馈</span><b>></b>
+              </button>
+              <button class="menu-item" type="button" data-menu="settings">
+                <span>设置</span><b>></b>
+              </button>
+            </div>
+          </div>
+          <div class="section">
+            <button class="wide-btn danger" id="logoutBtn" type="button">退出登录</button>
+          </div>
+        </div>
+      </section>
+
+      <nav class="tabbar">
+        <button class="tab active" type="button" data-tab="home"><span class="dot"></span>首页</button>
+        <button class="tab" type="button" data-tab="template"><span class="dot"></span>案例</button>
+        <button class="tab" type="button" data-tab="create"><span class="dot"></span>创作</button>
+        <button class="tab" type="button" data-tab="message"><span class="dot"></span>消息</button>
+        <button class="tab" type="button" data-tab="profile"><span class="dot"></span>我的</button>
+      </nav>
+
+      <div class="toast" id="toast" aria-live="polite"></div>
+    </div>
+
+    <script src="./assets/app.js"></script>
+  </body>
+</html>
+
