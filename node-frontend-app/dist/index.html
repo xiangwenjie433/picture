@@ -17,6 +17,13 @@
         <header class="header">
           <div class="title-row">
             <div class="brand">
+              <img
+                class="brand-logo"
+                src="./images/logo.png"
+                alt="绘鸟AI Logo"
+                onerror="this.style.display='none';this.nextElementSibling.style.display='grid';"
+              />
+              <span class="brand-logo-fallback" aria-hidden="true" style="display:none;">鸟</span>
               绘鸟<span>AI</span>
             </div>
             <button class="avatar" type="button" aria-label="打开个人中心" id="profileBtn">我</button>
@@ -103,18 +110,52 @@
           </div>
 
           <div class="section">
-            <div class="promo-card">
-              <div>
-                <h4>限时体验会员能力</h4>
-                <p>高清导出 + 商用授权 + 批量处理，首月 6 折</p>
+            <div class="tool-carousel" id="toolPromoCarousel">
+              <div class="tool-carousel-track">
+                <article class="tool-slide">
+                  <h4>服装套图</h4>
+                  <p>一键生成多角度服装展示图，快速完成店铺上新。</p>
+                </article>
+                <article class="tool-slide">
+                  <h4>真人换模特</h4>
+                  <p>无需重拍，保留商品细节，智能匹配不同模特形象。</p>
+                </article>
+                <article class="tool-slide">
+                  <h4>模特换场景</h4>
+                  <p>自动替换拍摄背景，适配通勤、户外、家居等场景。</p>
+                </article>
+                <article class="tool-slide">
+                  <h4>AI穿衣</h4>
+                  <p>支持虚拟试衣效果，快速预览款式上身表现。</p>
+                </article>
+                <article class="tool-slide">
+                  <h4>姿势裂变</h4>
+                  <p>一张图生成多姿势，提升素材丰富度和点击率。</p>
+                </article>
+                <article class="tool-slide">
+                  <h4>商品套图</h4>
+                  <p>自动产出主图、详情图、卖点图的整套视觉内容。</p>
+                </article>
+                <article class="tool-slide">
+                  <h4>AI视频</h4>
+                  <p>静态图片智能转短视频，适配短视频平台投放。</p>
+                </article>
+                <article class="tool-slide">
+                  <h4>风格复制</h4>
+                  <p>复刻爆款视觉风格，保证品牌调性统一。</p>
+                </article>
+                <article class="tool-slide">
+                  <h4>批量生图</h4>
+                  <p>批量上传素材并并行生成，分钟级拿到整包图。</p>
+                </article>
               </div>
-              <a class="promo-link" href="javascript:void(0)" id="moreIndustryBtn">立即查看</a>
+              <div class="tool-carousel-pager" id="toolPromoPager"></div>
             </div>
           </div>
 
           <div class="section">
             <div class="title">
-              <h3>热门模板</h3>
+              <h3>热门案例</h3>
               <a class="link" href="javascript:void(0)">换一批</a>
             </div>
             <div class="hot-scroll">

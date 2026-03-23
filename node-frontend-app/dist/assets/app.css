@@ -72,8 +72,30 @@ body{
   font-weight:800;
   font-size:22px;
   letter-spacing:.2px;
+  display:flex;
+  align-items:center;
+  gap:8px;
 }
 .brand span{color:var(--brand)}
+.brand-logo{
+  width:26px;
+  height:26px;
+  object-fit:contain;
+  border-radius:6px;
+  flex:0 0 auto;
+}
+.brand-logo-fallback{
+  width:26px;
+  height:26px;
+  border-radius:6px;
+  background:linear-gradient(135deg,var(--brand),var(--brand-2));
+  color:#fff;
+  font-size:13px;
+  font-weight:800;
+  display:grid;
+  place-items:center;
+  flex:0 0 auto;
+}
 .avatar{
   width:34px;
   height:34px;
@@ -383,6 +405,54 @@ body{
   font-size:11px;
   color:#98a2b3;
   margin-top:6px;
+}
+.tool-carousel{
+  border-radius:16px;
+  overflow:hidden;
+  border:1px solid #f0ddd0;
+  background:#fff;
+}
+.tool-carousel-track{
+  display:grid;
+  grid-auto-flow:column;
+  grid-auto-columns:100%;
+  overflow-x:auto;
+  scroll-snap-type:x mandatory;
+}
+.tool-carousel-track::-webkit-scrollbar{display:none}
+.tool-slide{
+  scroll-snap-align:start;
+  padding:14px 14px 16px;
+  background:linear-gradient(135deg,#fff5ec,#ffecd9);
+}
+.tool-slide h4{
+  margin:0 0 6px;
+  font-size:15px;
+  color:#8f3f0a;
+}
+.tool-slide p{
+  margin:0;
+  font-size:12px;
+  color:#ab5a1f;
+  line-height:1.55;
+}
+.tool-carousel-pager{
+  display:flex;
+  justify-content:center;
+  gap:6px;
+  padding:9px 0 10px;
+  background:#fff;
+}
+.tool-carousel-pager .dot{
+  width:6px;
+  height:6px;
+  border-radius:999px;
+  background:#e7d3c1;
+  transition:all .2s ease;
+}
+.tool-carousel-pager .dot.active{
+  width:14px;
+  background:#ff8a2b;
 }
 .i4{background:linear-gradient(135deg,#ff9a4a,#ffbf85)}
 .i5{background:linear-gradient(135deg,#ffab60,#ffc990)}

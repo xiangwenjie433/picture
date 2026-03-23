@@ -334,6 +334,78 @@
     updateToolPager();
   }
 
+  // Tool promotion carousel
+  const toolPromoCarousel = $("#toolPromoCarousel");
+  if (toolPromoCarousel) {
+    const track = toolPromoCarousel.querySelector(".tool-carousel-track");
+    const pager = $("#toolPromoPager");
+    const slides = track ? Array.from(track.querySelectorAll(".tool-slide")) : [];
+    if (track && pager && slides.length) {
+      pager.innerHTML = slides
+        .map((_, idx) => '<span class="dot' + (idx === 0 ? " active" : "") + '" data-index="' + idx + '"></span>')
+        .join("");
+
+      const dots = Array.from(pager.querySelectorAll(".dot"));
+      let current = 0;
+      let timer = null;
+      let touchStartX = 0;
+      let touchStartY = 0;
+
+      const setActive = (next) => {
+        current = Math.max(0, Math.min(slides.length - 1, next));
+        track.scrollTo({ left: current * track.clientWidth, behavior: "smooth" });
+        dots.forEach((d, i) => d.classList.toggle("active", i === current));
+      };
+
+      const syncByScroll = () => {
+        const idx = Math.round(track.scrollLeft / Math.max(track.clientWidth, 1));
+        if (idx === current) return;
+        current = idx;
+        dots.forEach((d, i) => d.classList.toggle("active", i === current));
+      };
+
+      const startAuto = () => {
+        clearInterval(timer);
+        timer = setInterval(() => {
+          setActive((current + 1) % slides.length);
+        }, 2800);
+      };
+
+      dots.forEach((dot) => {
+        dot.addEventListener("click", () => {
+          const idx = Number(dot.getAttribute("data-index") || 0);
+          setActive(idx);
+          startAuto();
+        });
+      });
+
+      track.addEventListener("scroll", syncByScroll, { passive: true });
+      track.addEventListener(
+        "touchstart",
+        (e) => {
+          if (!e.touches || !e.touches.length) return;
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+        },
+        { passive: true }
+      );
+      track.addEventListener(
+        "touchend",
+        (e) => {
+          if (!e.changedTouches || !e.changedTouches.length) return;
+          const dx = e.changedTouches[0].clientX - touchStartX;
+          const dy = e.changedTouches[0].clientY - touchStartY;
+          if (Math.abs(dx) < 32 || Math.abs(dx) < Math.abs(dy)) return;
+          setActive(current + (dx < 0 ? 1 : -1));
+          startAuto();
+        },
+        { passive: true }
+      );
+
+      startAuto();
+    }
+  }
+
   // Case tab
   const caseChips = $("#caseChips");
   if (caseChips) {
