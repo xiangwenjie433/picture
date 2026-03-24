@@ -284,37 +284,81 @@
             </div>
             <div class="masonry">
               <article class="m-card">
-                <div class="m-thumb t1"></div>
-                <div class="m-meta">
-                  <h4>服装商拍专区</h4>
-                  <p>平铺拍摄即可生成多角度商业视觉</p>
+                <div class="m-thumb">
+                  <img class="m-img" src="./images/尺码图_1580.jpg" alt="服装商拍专区" />
+                  <div class="m-product-tag" aria-label="商品">
+                    <img class="m-product-icon" src="./images/上衣原图.webp" alt="上衣原图" />
+                    <span>商品</span>
+                  </div>
+                  <div class="hot-hover-overlay">
+                    <div class="hot-hover-actions">
+                      <button class="hot-act-btn hot-preview-btn" type="button" data-action="preview" aria-label="预览">
+                        <img class="hot-eye-icon" src="./images/眼睛-3.png" alt="" width="22" height="22" />
+                        <span class="hot-preview-btn-text">预览</span>
+                      </button>
+                      <button class="hot-act-btn primary hot-make-btn" type="button" data-action="make">制作同款</button>
+                    </div>
+                  </div>
                 </div>
               </article>
               <article class="m-card">
-                <div class="m-thumb t2"></div>
-                <div class="m-meta">
-                  <h4>全品类爆款生成</h4>
-                  <p>美妆/家居/3C 细分风格模板</p>
+                <div class="m-thumb">
+                  <img class="m-img" src="./images/卖点图_1579.jpg" alt="全品类爆款生成" />
+                  <div class="m-product-tag" aria-label="商品">
+                    <img class="m-product-icon" src="./images/上衣原图.webp" alt="上衣原图" />
+                    <span>商品</span>
+                  </div>
+                  <div class="hot-hover-overlay">
+                    <div class="hot-hover-actions">
+                      <button class="hot-act-btn hot-preview-btn" type="button" data-action="preview" aria-label="预览">
+                        <img class="hot-eye-icon" src="./images/眼睛-3.png" alt="" width="22" height="22" />
+                        <span class="hot-preview-btn-text">预览</span>
+                      </button>
+                      <button class="hot-act-btn primary hot-make-btn" type="button" data-action="make">制作同款</button>
+                    </div>
+                  </div>
                 </div>
               </article>
               <article class="m-card">
-                <div class="m-thumb t3"></div>
-                <div class="m-meta">
-                  <h4>动态场景重组</h4>
-                  <p>物理引擎光影重构，质感升级</p>
+                <div class="m-thumb">
+                  <img class="m-img" src="./images/模特图_1577.jpg" alt="动态场景重组" />
+                  <div class="m-product-tag" aria-label="商品">
+                    <img class="m-product-icon" src="./images/上衣原图.webp" alt="上衣原图" />
+                    <span>商品</span>
+                  </div>
+                  <div class="hot-hover-overlay">
+                    <div class="hot-hover-actions">
+                      <button class="hot-act-btn hot-preview-btn" type="button" data-action="preview" aria-label="预览">
+                        <img class="hot-eye-icon" src="./images/眼睛-3.png" alt="" width="22" height="22" />
+                        <span class="hot-preview-btn-text">预览</span>
+                      </button>
+                      <button class="hot-act-btn primary hot-make-btn" type="button" data-action="make">制作同款</button>
+                    </div>
+                  </div>
                 </div>
               </article>
               <article class="m-card">
-                <div class="m-thumb t4"></div>
-                <div class="m-meta">
-                  <h4>工业级批量工厂</h4>
-                  <p>百图并行处理，自动裁切下载</p>
+                <div class="m-thumb">
+                  <img class="m-img" src="./images/种草图_1578.jpg" alt="工业级批量工厂" />
+                  <div class="m-product-tag" aria-label="商品">
+                    <img class="m-product-icon" src="./images/上衣原图.webp" alt="上衣原图" />
+                    <span>商品</span>
+                  </div>
+                  <div class="hot-hover-overlay">
+                    <div class="hot-hover-actions">
+                      <button class="hot-act-btn hot-preview-btn" type="button" data-action="preview" aria-label="预览">
+                        <img class="hot-eye-icon" src="./images/眼睛-3.png" alt="" width="22" height="22" />
+                        <span class="hot-preview-btn-text">预览</span>
+                      </button>
+                      <button class="hot-act-btn primary hot-make-btn" type="button" data-action="make">制作同款</button>
+                    </div>
+                  </div>
                 </div>
               </article>
             </div>
           </div>
           <div class="section">
-            <button class="wide-btn" id="loadMoreCasesBtn" type="button">加载更多案例</button>
+            <button class="wide-btn load-more-dots" id="loadMoreCasesBtn" type="button" aria-label="继续下滑自动加载更多案例">...</button>
           </div>
         </div>
 
@@ -325,40 +369,231 @@
               <h3>创作工作台</h3>
               <a class="link" href="javascript:void(0)" id="resetCreateBtn">清空</a>
             </div>
-            <div class="upload-box" id="uploadBox">
-              <div class="upload-icon">+</div>
-              <div class="upload-title">上传原图</div>
-              <div class="upload-desc">支持 JPG / PNG，建议 1200px 以上</div>
-              <button class="soft-btn" id="mockUploadBtn" type="button">选择图片</button>
+            <div class="create-mode-gate" id="createModeGate" aria-hidden="true">
+              <div class="create-mode-gate-card">
+                <h4>先选择创作模式</h4>
+                <p>选择模式后即可开始上传图片与生成操作</p>
+                <div class="create-mode-options" id="createModeOptions">
+                  <button class="create-mode-option" type="button" data-create-mode-pick="服装套图">服装套图</button>
+                  <button class="create-mode-option" type="button" data-create-mode-pick="真人换模特">真人换模特</button>
+                  <button class="create-mode-option" type="button" data-create-mode-pick="模特换场景">模特换场景</button>
+                  <button class="create-mode-option" type="button" data-create-mode-pick="AI穿衣">AI穿衣</button>
+                  <button class="create-mode-option" type="button" data-create-mode-pick="姿势裂变">姿势裂变</button>
+                  <button class="create-mode-option" type="button" data-create-mode-pick="商品套图">商品套图</button>
+                  <button class="create-mode-option" type="button" data-create-mode-pick="AI视频">AI视频</button>
+                  <button class="create-mode-option" type="button" data-create-mode-pick="风格复刻">风格复刻</button>
+                  <button class="create-mode-option" type="button" data-create-mode-pick="批量生图">批量生图</button>
+                </div>
+              </div>
             </div>
-            <div class="form-card">
-              <label class="form-item">
-                <span>创作模式</span>
-                <select id="createMode">
-                  <option>电商主图</option>
-                  <option>模特换装</option>
-                  <option>场景重构</option>
-                  <option>姿势裂变</option>
-                </select>
-              </label>
-              <label class="form-item">
-                <span>平台尺寸</span>
-                <select id="createSize">
-                  <option>1080 x 1080（通用）</option>
-                  <option>1242 x 1660（小红书）</option>
-                  <option>1080 x 1920（TikTok）</option>
-                  <option>1200 x 628（Amazon）</option>
-                </select>
-              </label>
-              <label class="form-item">
-                <span>风格描述</span>
-                <textarea id="createPrompt" rows="3" placeholder="例如：高级感、柔光、极简白底、突出产品卖点"></textarea>
-              </label>
+            <div class="create-web-layout">
+              <div class="create-left">
+                <div class="create-panel">
+                  <div class="create-panel-title">多角度服装图&搭配图</div>
+                  <div class="create-upload-actions">
+                    <button class="soft-btn" id="mockUploadBtn" type="button">从本地上传</button>
+                    <button class="primary-btn mini" id="startGenerateBtn" type="button">从品牌库选择</button>
+                  </div>
+                  <div class="create-upload-hint" id="createUploadHint">上传多角度产品图或细节图</div>
+                  <div class="upload-box" id="uploadBox">
+                    <button class="upload-icon" id="uploadPlusBtn" type="button" aria-label="从本地选择图片">+</button>
+                    <div class="upload-title">上传原图</div>
+                    <input class="upload-input" id="localImageInput" type="file" accept="image/*" multiple />
+                  </div>
+                  <div class="upload-preview-list" id="uploadPreviewList"></div>
+                </div>
+                <div class="create-panel form-card">
+                  <div class="create-sub-title-row">
+                    <div class="create-sub-title">商品信息（可选）</div>
+                    <div class="create-sub-actions">
+                      <button class="create-sub-btn active" id="aiAnalyzeBtn" type="button">AI分析</button>
+                      <button class="create-sub-btn" id="inputGuideBtn" type="button">输入向导</button>
+                    </div>
+                  </div>
+                  <label class="form-item">
+
+                  </label>
+                  <label class="form-item">
+                    <textarea id="createPrompt" rows="3" placeholder="描述您的产品信息和期望的图片风格"></textarea>
+                  </label>
+                  <label class="form-item">
+                    <span>生成比例</span>
+                    <select id="createSize">
+                      <option>3:4竖版</option>
+                      <option>4:3横版</option>
+                      <option>1:1方形</option>
+                      <option>9:16竖版</option>
+                      <option>16:9横版</option>
+                    </select>
+                  </label>
+                  <label class="form-item">
+                    <span>清晰度</span>
+                    <select id="createClarity">
+                      <option>4K 超清</option>
+                      <option>2K 高清</option>
+                      <option>1K 标清</option>
+                    </select>
+                  </label>
+                  <label class="form-item">
+                    <span>模型</span>
+                    <select id="createModel">
+                      <option>高级模型</option>
+                      <option>基础模型</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="create-panel main-sub-panel">
+                  <div class="main-sub-head">
+                    <div class="main-sub-title-wrap">
+                      <div class="main-sub-title">主副图设置</div>
+                      <button class="main-sub-info-btn" id="mainSubInfoBtn" type="button" aria-label="查看主副图设置说明">?</button>
+                    </div>
+                    <div class="main-sub-head-actions">
+                      <label class="main-sub-switch">
+                        <input id="mainSubToggle" type="checkbox" checked />
+                        <span class="main-sub-slider"></span>
+                      </label>
+                    </div>
+                    <div class="main-sub-info-pop" id="mainSubInfoPop" aria-hidden="true">
+                      <h5>主副图设置说明</h5>
+                      <p>- 模特图：生成一套同模特同场景的套图</p>
+                      <p>- 种草图：真实感博主图，可裂变出不同模特、场景、搭配</p>
+                      <p>- 卖点图：根据商品卖点生成展示服装细节、搭配、面料的图片</p>
+                      <p>- 尺码图：展示尺码，讲解说明等信息</p>
+                      <p>- 白底图：生成白底、3D的服装展示图</p>
+                    </div>
+                  </div>
+                  <div class="main-sub-body" id="mainSubBody">
+                    <div class="main-sub-tip">生成类型（多选）</div>
+                    <div class="main-sub-item-row" data-type-row="model">
+                      <label class="main-sub-check">
+                        <input type="checkbox" data-type-check="model" />
+                        <span>模特图</span>
+                      </label>
+                      <div class="main-sub-count">
+                        <button type="button" data-count-action="minus" data-count-type="model" aria-label="减少">-</button>
+                        <span data-count-value="model">0</span>
+                        <button type="button" data-count-action="plus" data-count-type="model" aria-label="增加">+</button>
+                      </div>
+                    </div>
+                    <div class="main-sub-tip">可选设置</div>
+                    <div class="main-sub-optional-grid">
+                      <button class="main-sub-optional" id="pickSceneBtn" type="button">+ 场景（可选）</button>
+                      <button class="main-sub-optional" id="pickModelBtn" type="button">+ 模特（可选）</button>
+                    </div>
+                    <div class="main-sub-item-row" data-type-row="seed">
+                      <label class="main-sub-check">
+                        <input type="checkbox" data-type-check="seed" />
+                        <span>种草图</span>
+                      </label>
+                      <div class="main-sub-count">
+                        <button type="button" data-count-action="minus" data-count-type="seed" aria-label="减少">-</button>
+                        <span data-count-value="seed">0</span>
+                        <button type="button" data-count-action="plus" data-count-type="seed" aria-label="增加">+</button>
+                      </div>
+                    </div>
+                    <div class="main-sub-item-row" data-type-row="selling">
+                      <label class="main-sub-check">
+                        <input type="checkbox" data-type-check="selling" />
+                        <span>卖点图</span>
+                      </label>
+                      <div class="main-sub-count">
+                        <button type="button" data-count-action="minus" data-count-type="selling" aria-label="减少">-</button>
+                        <span data-count-value="selling">0</span>
+                        <button type="button" data-count-action="plus" data-count-type="selling" aria-label="增加">+</button>
+                      </div>
+                    </div>
+                    <div class="main-sub-item-row" data-type-row="size">
+                      <label class="main-sub-check">
+                        <input type="checkbox" data-type-check="size" />
+                        <span>尺码图</span>
+                      </label>
+                      <div class="main-sub-count">
+                        <button type="button" data-count-action="minus" data-count-type="size" aria-label="减少">-</button>
+                        <span data-count-value="size">0</span>
+                        <button type="button" data-count-action="plus" data-count-type="size" aria-label="增加">+</button>
+                      </div>
+                    </div>
+                    <div class="main-sub-item-row" data-type-row="white">
+                      <label class="main-sub-check">
+                        <input type="checkbox" data-type-check="white" />
+                        <span>白底图</span>
+                      </label>
+                      <div class="main-sub-count">
+                        <button type="button" data-count-action="minus" data-count-type="white" aria-label="减少">-</button>
+                        <span data-count-value="white">0</span>
+                        <button type="button" data-count-action="plus" data-count-type="white" aria-label="增加">+</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="create-power-hint" id="createPowerHint">主副图0张 * 每张0点 = 0点</div>
+                <div class="action-row action-row-single">
+                  <button class="primary-btn" id="previewBtn" type="button">开始生成(0算力)</button>
+                </div>
+              </div>
+              <div class="create-right">
+                <div class="create-result-toolbar">
+                  <div class="create-result-meta" id="createResultMeta">等待生成结果</div>
+                  <button class="result-export-btn" id="exportAllBtn" type="button">导出高清原图</button>
+                </div>
+                <div class="create-result-stage">
+                  <div class="create-result-list" id="createResultList"></div>
+                </div>
+              </div>
             </div>
-            <div class="action-row">
-              <button class="ghost-btn" id="previewBtn" type="button">生成预览</button>
-              <button class="primary-btn" id="exportBtn" type="button">导出高清</button>
+          </div>
+        </div>
+        <div class="brand-modal-mask" id="resultDetailMask" aria-hidden="true"></div>
+        <div class="brand-modal" id="resultDetailModal" role="dialog" aria-modal="true" aria-hidden="true">
+          <div class="brand-modal-header">
+            <h4 id="resultDetailTitle">图片详情</h4>
+            <button class="brand-modal-close" type="button" id="resultDetailCloseBtn" aria-label="关闭图片详情">关闭</button>
+          </div>
+          <div class="result-detail-body">
+            <img id="resultDetailImg" alt="结果详情图" />
+            <div class="result-detail-actions">
+              <button class="primary-btn" type="button" id="resultDetailDownloadBtn">下载高清图</button>
             </div>
+          </div>
+        </div>
+        <div class="brand-modal-mask" id="brandModalMask" aria-hidden="true"></div>
+        <div class="brand-modal" id="brandModal" role="dialog" aria-modal="true" aria-hidden="true">
+          <div class="brand-modal-header">
+            <h4>品牌库选择</h4>
+            <button class="brand-modal-close" type="button" id="brandModalCloseBtn" aria-label="关闭品牌库">关闭</button>
+          </div>
+          <div class="brand-modal-list">
+            <button class="brand-item" type="button" data-brand-name="品牌款-西装套装" data-brand-src="./images/上衣原图.webp">
+              <img src="./images/上衣原图.webp" alt="品牌款-西装套装" />
+              <span>品牌款-西装套装</span>
+            </button>
+            <button class="brand-item" type="button" data-brand-name="品牌款-模特图" data-brand-src="./images/模特图_1577.jpg">
+              <img src="./images/模特图_1577.jpg" alt="品牌款-模特图" />
+              <span>品牌款-模特图</span>
+            </button>
+            <button class="brand-item" type="button" data-brand-name="品牌款-尺码图" data-brand-src="./images/尺码图_1580.jpg">
+              <img src="./images/尺码图_1580.jpg" alt="品牌款-尺码图" />
+              <span>品牌款-尺码图</span>
+            </button>
+            <button class="brand-item" type="button" data-brand-name="品牌款-卖点图" data-brand-src="./images/卖点图_1579.jpg">
+              <img src="./images/卖点图_1579.jpg" alt="品牌款-卖点图" />
+              <span>品牌款-卖点图</span>
+            </button>
+          </div>
+          <div class="brand-modal-footer">
+            <button class="primary-btn" type="button" id="brandModalConfirmBtn">确认添加</button>
+          </div>
+        </div>
+        <div class="brand-modal-mask" id="mainSubPickerMask" aria-hidden="true"></div>
+        <div class="brand-modal" id="mainSubPickerModal" role="dialog" aria-modal="true" aria-hidden="true">
+          <div class="brand-modal-header">
+            <h4 id="mainSubPickerTitle">选择项目</h4>
+            <button class="brand-modal-close" type="button" id="mainSubPickerCloseBtn" aria-label="关闭选择弹窗">关闭</button>
+          </div>
+          <div class="brand-modal-list" id="mainSubPickerList"></div>
+          <div class="brand-modal-footer">
+            <button class="primary-btn" type="button" id="mainSubPickerConfirmBtn">确认选择</button>
           </div>
         </div>
 
