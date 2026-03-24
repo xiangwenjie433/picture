@@ -127,6 +127,14 @@ body{
   padding:0 16px;
   margin-top:14px;
 }
+/* 热门案例：上下留白更宽松 */
+.section-hot{
+  margin-top:22px;
+  margin-bottom:6px;
+}
+.section-hot .title{
+  margin-bottom:16px;
+}
 .hero{
   background:linear-gradient(135deg,var(--brand),var(--brand-2));
   border-radius:18px;
@@ -487,7 +495,7 @@ body{
   grid-auto-columns:64%;
   gap:10px;
   overflow:auto;
-  padding-bottom:2px;
+  padding:4px 0 12px;
 }
 .hot-card{
   border:1px solid #e9edf3;
@@ -497,6 +505,229 @@ body{
 }
 .hot-thumb{
   height:94px;
+  position:relative;
+  overflow:hidden;
+}
+.hot-img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+.hot-product-tag{
+  position:absolute;
+  left:10px;
+  bottom:10px;
+  background:rgba(255,255,255,.92);
+  border:1px solid #f0ddd0;
+  color:#a44f14;
+  font-size:11px;
+  font-weight:900;
+  padding:3px 8px;
+  border-radius:999px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  z-index:5;
+}
+.hot-product-icon{
+  width:16px;
+  height:16px;
+  border-radius:4px;
+  object-fit:cover;
+  display:block;
+}
+.hot-rank-badge{
+  position:absolute;
+  left:10px;
+  top:10px;
+  background:linear-gradient(135deg,var(--brand),var(--brand-2));
+  color:#fff;
+  font-size:11px;
+  font-weight:900;
+  padding:3px 8px;
+  border-radius:12px;
+  z-index:5;
+}
+.hot-rank-badge.no-1{
+  background:linear-gradient(135deg,#ff8a2b,#ffd18a);
+}
+.hot-rank-badge.no-2{
+  background:linear-gradient(135deg,#ffb067,#fff0c2);
+}
+.hot-rank-badge.no-3{
+  background:linear-gradient(135deg,#ffcf7a,#ffe5b3);
+}
+.hot-rank-badge.no-4{
+  background:linear-gradient(135deg,#ff9b4a,#ffd1a8);
+}
+.hot-hover-overlay{
+  position:absolute;
+  inset:0;
+  padding:0;
+  background:linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,.50) 100%);
+  opacity:0;
+  transform:translateY(6px);
+  transition:opacity .15s ease, transform .15s ease;
+  pointer-events:none;
+  z-index:4;
+}
+.hot-thumb:hover .hot-hover-overlay{
+  opacity:1;
+  transform:translateY(0);
+  pointer-events:auto;
+}
+.hot-thumb.is-touch .hot-hover-overlay{
+  opacity:1;
+  transform:translateY(0);
+  pointer-events:auto;
+}
+/* 铺满缩略图框，保证「预览」的 50%/50% 相对整张图居中（子元素均为 absolute 时容器不能塌缩） */
+.hot-hover-actions{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+}
+.hot-act-btn{
+  border:0;
+  background:rgba(255,255,255,.96);
+  color:#3f2f05;
+  border-radius:12px;
+  padding:7px 8px;
+  font-size:11px;
+  font-weight:900;
+  cursor:pointer;
+  min-width:64px;
+}
+.hot-act-btn.primary{
+  background:linear-gradient(135deg,var(--brand),var(--brand-2));
+  color:#fff;
+}
+.hot-preview-btn{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  background:transparent;
+  border-radius:999px;
+  padding:6px 8px;
+  min-width:0;
+  box-shadow:none;
+  z-index:6;
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  line-height:1;
+  pointer-events:auto;
+  cursor:pointer;
+  filter:drop-shadow(0 1px 3px rgba(0,0,0,.45));
+}
+.hot-preview-btn-text{
+  color:#fff;
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.02em;
+  white-space:nowrap;
+  text-shadow:0 1px 4px rgba(0,0,0,.55);
+}
+.hot-eye-icon{
+  width:22px;
+  height:22px;
+  object-fit:contain;
+  display:block;
+  flex-shrink:0;
+  pointer-events:none;
+}
+.hot-make-btn{
+  position:absolute;
+  right:10px;
+  bottom:10px;
+  z-index:6;
+  pointer-events:auto;
+  cursor:pointer;
+}
+
+/* 热榜预览弹窗 */
+.hot-preview-mask{
+  position:absolute;
+  inset:0;
+  background:rgba(17,24,39,.45);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .15s ease;
+  z-index:40;
+}
+.hot-preview-mask.show{
+  opacity:1;
+  pointer-events:auto;
+}
+.hot-preview-modal{
+  position:absolute;
+  left:16px;
+  right:16px;
+  top:120px;
+  background:#fff;
+  border-radius:18px;
+  border:1px solid #f0ddd0;
+  box-shadow:0 30px 80px rgba(16,24,40,.25);
+  transform:translateY(8px);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .15s ease, transform .15s ease;
+  z-index:41;
+  overflow:hidden;
+}
+.hot-preview-modal.show{
+  opacity:1;
+  pointer-events:auto;
+  transform:translateY(0);
+}
+.hot-preview-header{
+  padding:12px 12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border-bottom:1px solid #f0ddd0;
+}
+.hot-preview-title{
+  font-weight:900;
+  color:#111827;
+}
+.hot-preview-close{
+  border:0;
+  background:#f5f7fb;
+  color:#111827;
+  border-radius:12px;
+  padding:8px 10px;
+  cursor:pointer;
+  font-weight:900;
+}
+.hot-preview-body{
+  padding:12px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.hot-preview-col{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.hot-preview-label{
+  font-size:12px;
+  color:#8f3f0a;
+  font-weight:900;
+}
+.hot-preview-img{
+  width:100%;
+  height:132px;
+  object-fit:cover;
+  border-radius:14px;
+  border:1px solid #f0ddd0;
 }
 .hot-title{
   font-size:13px;

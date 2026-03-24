@@ -406,6 +406,96 @@
     }
   }
 
+  // Hot rank list actions (热门案例：预览 / 制作同款)
+  const hotScroll = $(".hot-scroll");
+  if (hotScroll) {
+    // 预览弹窗元素
+    const hotPreviewMask = $("#hotPreviewMask");
+    const hotPreviewModal = $("#hotPreviewModal");
+    const hotPreviewCloseBtn = $("#hotPreviewCloseBtn");
+    const hotPreviewBeforeImg = $("#hotPreviewBeforeImg");
+    const hotPreviewAfterImg = $("#hotPreviewAfterImg");
+    const hotPreviewTitle = $(".hot-preview-title");
+
+    let hotTouchTimer = null;
+
+    function openHotPreview(title, beforeSrc, afterSrc) {
+      if (!hotPreviewMask || !hotPreviewModal) return;
+      if (hotPreviewTitle) hotPreviewTitle.textContent = title || "预览";
+      if (hotPreviewBeforeImg) {
+        hotPreviewBeforeImg.src = beforeSrc;
+        hotPreviewBeforeImg.style.clipPath = "";
+      }
+      if (hotPreviewAfterImg) hotPreviewAfterImg.src = afterSrc;
+      hotPreviewMask.classList.add("show");
+      hotPreviewModal.classList.add("show");
+      hotPreviewMask.setAttribute("aria-hidden", "false");
+      hotPreviewModal.setAttribute("aria-hidden", "false");
+    }
+
+    function closeHotPreview() {
+      if (!hotPreviewMask || !hotPreviewModal) return;
+      hotPreviewMask.classList.remove("show");
+      hotPreviewModal.classList.remove("show");
+      hotPreviewMask.setAttribute("aria-hidden", "true");
+      hotPreviewModal.setAttribute("aria-hidden", "true");
+    }
+
+    if (hotPreviewCloseBtn) hotPreviewCloseBtn.addEventListener("click", closeHotPreview);
+    if (hotPreviewMask) hotPreviewMask.addEventListener("click", closeHotPreview);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeHotPreview();
+    });
+
+    // 移动端触摸：临时显示覆盖层（模拟 hover）
+    hotScroll.addEventListener(
+      "touchstart",
+      (e) => {
+        const card = e.target.closest(".hot-card");
+        if (!card) return;
+        const thumb = card.querySelector(".hot-thumb");
+        if (!thumb) return;
+        thumb.classList.add("is-touch");
+        clearTimeout(hotTouchTimer);
+        hotTouchTimer = setTimeout(() => thumb.classList.remove("is-touch"), 2600);
+      },
+      { passive: true }
+    );
+
+    hotScroll.addEventListener("click", (e) => {
+      const btn = e.target.closest(".hot-act-btn[data-action]");
+      if (!btn) return;
+
+      const card = e.target.closest(".hot-card[data-hot-kind]");
+      if (!card) return;
+
+      const action = btn.getAttribute("data-action") || "";
+      const kind = card.getAttribute("data-hot-kind") || "案例";
+      const modeKey = card.getAttribute("data-hot-mode") || "product";
+
+      if (action === "preview") {
+        const beforeSrc = "./images/上衣原图.webp";
+        const afterImg = card.querySelector("img.hot-img");
+        const afterSrc = (afterImg && afterImg.getAttribute("src")) || "";
+        openHotPreview(kind + " 预览", beforeSrc, afterSrc);
+        return;
+      }
+
+      if (action === "make") {
+        const modeMap = {
+          product: "电商主图",
+          fitting: "模特换装",
+          pose: "姿势裂变",
+        };
+        state.create.mode = modeMap[modeKey] || "电商主图";
+        saveState();
+        renderCreate();
+        setTab("create");
+        showToast("已制作同款：" + kind);
+      }
+    });
+  }
+
   // Case tab
   const caseChips = $("#caseChips");
   if (caseChips) {
