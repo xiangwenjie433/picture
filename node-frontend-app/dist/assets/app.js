@@ -10,14 +10,18 @@
   let toastTimer = null;
 
   const seedCases = [
-    { id: "c1", title: "服装商拍专区", desc: "平铺拍摄即可生成多角度商业视觉", cat: "fashion", thumb: "t1" },
-    { id: "c2", title: "全品类爆款生成", desc: "美妆/家居/3C 细分风格模板", cat: "beauty", thumb: "t2" },
-    { id: "c3", title: "动态场景重组", desc: "物理引擎光影重构，质感升级", cat: "home", thumb: "t3" },
-    { id: "c4", title: "工业级批量工厂", desc: "百图并行处理，自动裁切下载", cat: "3c", thumb: "t4" },
-    { id: "c5", title: "夏季穿搭套图", desc: "同款多姿势裂变，快速上新", cat: "fashion", thumb: "t1" },
-    { id: "c6", title: "护肤礼盒主图", desc: "柔光氛围，突出产品层次", cat: "beauty", thumb: "t2" },
-    { id: "c7", title: "厨房场景图", desc: "生活方式场景强化转化", cat: "home", thumb: "t3" },
-    { id: "c8", title: "3C 详情头图", desc: "参数卖点突出，适配电商平台", cat: "3c", thumb: "t4" },
+    { id: "c1", title: "服装套图上新", desc: "同款多角度图组一键出图", cat: "fashion_set", thumb: "t1" },
+    { id: "c2", title: "真人换模特大片", desc: "保留服饰细节自动换人像", cat: "real_model", thumb: "t2" },
+    { id: "c3", title: "模特换场景海报", desc: "室内外场景快速重组", cat: "model_scene", thumb: "t3" },
+    { id: "c4", title: "AI穿衣试搭", desc: "一键试穿多款穿搭组合", cat: "ai_wear", thumb: "t4" },
+    { id: "c5", title: "姿势裂变套图", desc: "同服装批量生成不同姿势", cat: "pose", thumb: "t1" },
+    { id: "c6", title: "商品套图工厂", desc: "主图详情图活动图整包生成", cat: "product_set", thumb: "t2" },
+    { id: "c7", title: "AI视频封面", desc: "短视频封面与标题视觉联动", cat: "ai_video", thumb: "t3" },
+    { id: "c8", title: "风格复刻实验室", desc: "输入参考图快速复刻风格", cat: "style_copy", thumb: "t4" },
+    { id: "c9", title: "批量生图流程", desc: "百图并行自动裁切下载", cat: "batch", thumb: "t1" },
+    { id: "c10", title: "服装套图节日版", desc: "大促主题快速上新", cat: "fashion_set", thumb: "t2" },
+    { id: "c11", title: "真人换模特秋装", desc: "多身形模特快速匹配", cat: "real_model", thumb: "t3" },
+    { id: "c12", title: "商品套图电商版", desc: "适配多平台图组尺寸", cat: "product_set", thumb: "t4" },
   ];
 
   const seedMessages = [
@@ -88,6 +92,47 @@
   const tabs = $$(".tab[data-tab]");
   const pages = $$(".page[data-tab-page]");
 
+  function enableMouseDragScroll(el) {
+    if (!el) return;
+    let isDown = false;
+    let startX = 0;
+    let startLeft = 0;
+    let moved = false;
+
+    el.addEventListener("mousedown", (e) => {
+      if (e.button !== 0) return;
+      isDown = true;
+      moved = false;
+      startX = e.clientX;
+      startLeft = el.scrollLeft;
+      el.classList.add("is-dragging");
+    });
+
+    el.addEventListener("mousemove", (e) => {
+      if (!isDown) return;
+      const dx = e.clientX - startX;
+      if (Math.abs(dx) > 4) moved = true;
+      el.scrollLeft = startLeft - dx;
+    });
+
+    window.addEventListener("mouseup", () => {
+      if (!isDown) return;
+      isDown = false;
+      el.classList.remove("is-dragging");
+    });
+
+    // 拖动后阻止误触发按钮点击
+    el.addEventListener(
+      "click",
+      (e) => {
+        if (!moved) return;
+        e.preventDefault();
+        e.stopPropagation();
+      },
+      true
+    );
+  }
+
   function setTab(tabName, opts) {
     const options = opts || {};
     tabs.forEach((btn) => {
@@ -117,10 +162,15 @@
     return (
       {
         all: "全部",
-        fashion: "服装",
-        beauty: "美妆",
-        home: "家居",
-        "3c": "3C",
+        fashion_set: "服装套图",
+        real_model: "真人换模特",
+        model_scene: "模特换场景",
+        ai_wear: "AI穿衣",
+        pose: "姿势裂变",
+        product_set: "商品套图",
+        ai_video: "AI视频",
+        style_copy: "风格复刻",
+        batch: "批量生图",
       }[key] || "全部"
     );
   }
@@ -334,6 +384,48 @@
     updateToolPager();
   }
 
+  // Home inspiration tabs filter
+  const inspireTabs = $("#inspireTabs");
+  const inspireFeed = $("#inspireFeed");
+  enableMouseDragScroll(inspireTabs);
+  if (inspireTabs && inspireFeed) {
+    const feedCards = Array.from(inspireFeed.querySelectorAll(".feed-card[data-feed-cat]"));
+    const mainTabs = Array.from(inspireTabs.querySelectorAll(".inspire-tab[data-inspire-filter]"));
+
+    const setActiveFilter = (filterKey) => {
+      const key = filterKey || "all";
+      mainTabs.forEach((btn) => btn.classList.toggle("active", (btn.getAttribute("data-inspire-filter") || "") === key));
+
+      let visible = 0;
+      feedCards.forEach((card) => {
+        const cat = card.getAttribute("data-feed-cat") || "";
+        const show = key === "all" || key === cat;
+        card.classList.toggle("hidden", !show);
+        if (show) visible += 1;
+      });
+
+      let empty = inspireFeed.querySelector(".empty-state.inspire-empty");
+      if (!visible) {
+        if (!empty) {
+          empty = document.createElement("div");
+          empty.className = "empty-state inspire-empty";
+          empty.textContent = "当前分类暂无灵感";
+          inspireFeed.appendChild(empty);
+        }
+      } else if (empty) {
+        empty.remove();
+      }
+    };
+
+    inspireTabs.addEventListener("click", (e) => {
+      const btn = e.target.closest(".inspire-tab[data-inspire-filter]");
+      if (!btn) return;
+      setActiveFilter(btn.getAttribute("data-inspire-filter") || "all");
+    });
+
+    setActiveFilter("all");
+  }
+
   // Tool promotion carousel
   const toolPromoCarousel = $("#toolPromoCarousel");
   if (toolPromoCarousel) {
@@ -498,6 +590,7 @@
 
   // Case tab
   const caseChips = $("#caseChips");
+  enableMouseDragScroll(caseChips);
   if (caseChips) {
     caseChips.addEventListener("click", (e) => {
       const chip = e.target.closest(".chip[data-chip]");
