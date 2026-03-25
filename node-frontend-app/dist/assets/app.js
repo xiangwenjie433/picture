@@ -44,15 +44,26 @@
       clarity: "4K 超清",
       modelLevel: "高级模型",
       prompt: "",
+      outputCount: 4,
       sourceLabel: "上传服装图",
       sourceImage: "./images/上衣原图.webp",
       sourceImages: [],
+      uploadRulesExpanded: false,
+      aiWearUploadSource: "local",
+      poseTipsBannerVisible: true,
+      videoPrompt: "",
+      videoDuration: "10秒",
+      videoClarity: "720P",
+      videoAspect: "自适应",
+      videoModelLevel: "高级模型",
+      aiVideoUploadSource: "brand",
     },
     user: {
       loggedIn: false,
       name: "",
       id: "",
       vip: false,
+      brandAssets: [],
     },
     cases: seedCases,
     messages: seedMessages,
@@ -67,10 +78,14 @@
       const text = localStorage.getItem(APP_KEY);
       if (!text) return cloneDefaultState();
       const data = JSON.parse(text);
+      const createMerged = { ...cloneDefaultState().create, ...(data.create || {}) };
+      if (createMerged.mode === "场景重构") {
+        createMerged.mode = "模特换场景";
+      }
       return {
         ...cloneDefaultState(),
         ...data,
-        create: { ...cloneDefaultState().create, ...(data.create || {}) },
+        create: createMerged,
         user: { ...cloneDefaultState().user, ...(data.user || {}) },
       };
     } catch (err) {
@@ -188,12 +203,21 @@
 
   function setTab(tabName, opts) {
     const options = opts || {};
+    const header = $(".header");
     tabs.forEach((btn) => {
       btn.classList.toggle("active", btn.getAttribute("data-tab") === tabName);
     });
     pages.forEach((page) => {
       page.classList.toggle("active", page.getAttribute("data-tab-page") === tabName);
     });
+    if (header) {
+      header.classList.toggle("is-hidden-on-profile", tabName === "profile");
+    }
+    if (tabName !== "profile") {
+      closeSettingsPage();
+      closeAccountPage();
+      closeBrandPage && closeBrandPage();
+    }
     state.tab = tabName;
     saveState();
     if (!options.keepScroll) {
@@ -262,8 +286,72 @@
 - 颜色：黑底+浅灰+藏蓝撞色
 - 尺码：M、L、XL、XXL、XXXL（宽松码数，适配不同身高体重人群）`;
 
+  function isPortraitStudioMode() {
+    return state.create.mode === "真人换模特" || state.create.mode === "模特换场景";
+  }
+
+  function isAiWearMode() {
+    return state.create.mode === "AI穿衣";
+  }
+
+  function isPoseFissionMode() {
+    return state.create.mode === "姿势裂变";
+  }
+
+  function isProductSetMode() {
+    return state.create.mode === "商品套图";
+  }
+
+  function isAiVideoMode() {
+    return state.create.mode === "AI视频";
+  }
+
   function maxUploadSlots() {
-    return state.create.mode === "真人换模特" ? 10 : 3;
+    if (isPortraitStudioMode()) return 10;
+    if (isAiVideoMode()) return 1;
+    if (isProductSetMode()) return 5;
+    return 3;
+  }
+
+  function getAiVideoPowerTotal() {
+    const clarity = state.create.videoClarity || "720P";
+    const dur = state.create.videoDuration || "10秒";
+    const is1080 = clarity === "1080P";
+    const is10 = dur === "10秒";
+    if (is1080) return is10 ? 600 : 300;
+    return is10 ? 400 : 200;
+  }
+
+  function syncAiWearModelRow() {
+    const n = mainSubState.modelSelected.length;
+    const b = $("#aiWearModelBadge");
+    const card = $("#aiWearPickModelBtn");
+    if (b) {
+      b.hidden = n <= 0;
+      b.textContent = n ? "已选" + n + "项" : "";
+    }
+    if (card) card.classList.toggle("is-active", n > 0);
+  }
+
+  function syncPosePickerRow() {
+    const n = (mainSubState.poseSelected && mainSubState.poseSelected.length) || 0;
+    const b = $("#posePickBadge");
+    const card = $("#posePickPoseBtn");
+    if (b) {
+      b.hidden = n <= 0;
+      b.textContent = n ? "已选" + n + "项" : "";
+    }
+    if (card) card.classList.toggle("is-active", n > 0);
+  }
+
+  function syncAllDescPromptCounts() {
+    const len = (state.create.prompt || "").length;
+    ["#createPromptCount", "#modelswapPromptCount", "#aiWearPromptCount", "#posePromptCount"].forEach((sel) => {
+      const el = $(sel);
+      if (el) el.textContent = String(len);
+    });
+    const vCnt = $("#aiVideoPromptCount");
+    if (vCnt) vCnt.textContent = String(Math.min(2500, (state.create.videoPrompt || "").length));
   }
 
   function buildUploadPreviewItemsHtml(imgs) {
@@ -420,6 +508,9 @@
     const uploadPreviewList = $("#uploadPreviewList");
     const modelswapPreviewList = $("#modelswapPreviewList");
     const wbFashion = $("#createWorkbenchFashion");
+    const wbAiWear = $("#createWorkbenchAiWear");
+    const wbPose = $("#createWorkbenchPose");
+    const wbAiVideo = $("#createWorkbenchAiVideo");
     const wbModelSwap = $("#createWorkbenchModelSwap");
     const modelswapDropzone = $("#modelswapDropzone");
     const modelswapDropzoneInner = $("#modelswapDropzoneInner");
@@ -434,11 +525,72 @@
     const modelswapSize = $("#modelswapSize");
     const modelswapClarity = $("#modelswapClarity");
     const modelswapModelLevel = $("#modelswapModelLevel");
+    const modelswapOutputCount = $("#modelswapOutputCount");
+    const aiWearPrompt = $("#aiWearPrompt");
+    const aiWearSize = $("#aiWearSize");
+    const aiWearClarity = $("#aiWearClarity");
+    const aiWearModelLevel = $("#aiWearModelLevel");
+    const aiWearOutputCount = $("#aiWearOutputCount");
 
     const isModelSwap = state.create.mode === "真人换模特";
-    if (createPage) createPage.classList.toggle("is-mode-model-swap", isModelSwap);
-    if (wbFashion) wbFashion.hidden = isModelSwap;
-    if (wbModelSwap) wbModelSwap.hidden = !isModelSwap;
+    const isSceneChange = state.create.mode === "模特换场景";
+    const isAiWear = isAiWearMode();
+    const isPoseFission = isPoseFissionMode();
+    const isAltStudio = isPortraitStudioMode();
+    const isProductSet = isProductSetMode();
+    const isAiVideo = isAiVideoMode();
+    if ((state.create.prompt || "").length > 2500) {
+      state.create.prompt = state.create.prompt.slice(0, 2500);
+      saveState();
+    }
+    if (isAiVideo && (state.create.videoPrompt || "").length > 2500) {
+      state.create.videoPrompt = state.create.videoPrompt.slice(0, 2500);
+      saveState();
+    }
+    if (createPage) {
+      createPage.classList.toggle("is-mode-model-swap", isModelSwap);
+      createPage.classList.toggle("is-mode-scene-change", isSceneChange);
+      createPage.classList.toggle("is-mode-ai-wear", isAiWear);
+      createPage.classList.toggle("is-mode-pose-fission", isPoseFission);
+      createPage.classList.toggle("is-mode-product-set", isProductSet);
+      createPage.classList.toggle("is-mode-ai-video", isAiVideo);
+    }
+    if (wbFashion) wbFashion.hidden = isAltStudio || isAiWear || isPoseFission || isAiVideo;
+    if (wbAiWear) wbAiWear.hidden = !isAiWear;
+    if (wbPose) wbPose.hidden = !isPoseFission;
+    if (wbAiVideo) wbAiVideo.hidden = !isAiVideo;
+    if (wbModelSwap) wbModelSwap.hidden = !isAltStudio;
+
+    const uploadHeading = $("#modelswapUploadHeading");
+    const uploadGuide = $("#modelswapUploadGuide");
+    const dualPickers = $("#modelswapDualPickers");
+    const pickModelCard = $("#modelswapPickModelBtn");
+    const interactiveTip = $("#modelswapInteractiveTip");
+    if (uploadHeading) {
+      uploadHeading.textContent = isSceneChange ? "上传模特图" : "上传真人试穿图";
+    }
+    if (uploadGuide) {
+      uploadGuide.textContent = isSceneChange
+        ? "请上传清晰的模特图，建议使用正面或侧面全身/半身照，便于智能替换背景场景。"
+        : "请上传清晰的真人试穿图片，建议使用正面或侧面角度";
+      const rulesOpen = !!state.create.uploadRulesExpanded;
+      uploadGuide.hidden = !rulesOpen;
+      uploadGuide.setAttribute("aria-hidden", rulesOpen ? "false" : "true");
+    }
+    const rulesBtn = $("#modelswapRulesBtn");
+    if (rulesBtn) {
+      rulesBtn.setAttribute("aria-expanded", state.create.uploadRulesExpanded ? "true" : "false");
+      rulesBtn.classList.toggle("is-open", !!state.create.uploadRulesExpanded);
+    }
+    if (dualPickers) dualPickers.hidden = false;
+    if (pickModelCard) {
+      pickModelCard.hidden = isSceneChange;
+    }
+    if (interactiveTip) {
+      interactiveTip.textContent = isSceneChange
+        ? "已选模特图 · 缩略图 × 可删 · 可继续添加"
+        : "已选试穿图 · 缩略图 × 可删 · 可继续添加";
+    }
 
     if (uploadBox) {
       uploadBox.style.borderStyle = state.create.uploaded ? "solid" : "dashed";
@@ -459,16 +611,76 @@
     if (modelswapSize) modelswapSize.value = state.create.size;
     if (modelswapClarity) modelswapClarity.value = state.create.clarity || "4K 超清";
     if (modelswapModelLevel) modelswapModelLevel.value = state.create.modelLevel || "高级模型";
+    if (modelswapOutputCount) {
+      const oc = Math.min(4, Math.max(1, Number(state.create.outputCount) || 4));
+      modelswapOutputCount.value = String(oc);
+    }
+    if (aiWearPrompt) aiWearPrompt.value = state.create.prompt || "";
+    if (aiWearSize) aiWearSize.value = state.create.size;
+    if (aiWearClarity) aiWearClarity.value = state.create.clarity || "4K 超清";
+    if (aiWearModelLevel) aiWearModelLevel.value = state.create.modelLevel || "高级模型";
+    if (aiWearOutputCount) {
+      const ocw = Math.min(4, Math.max(1, Number(state.create.outputCount) || 4));
+      aiWearOutputCount.value = String(ocw);
+    }
 
-    if (uploadHint) uploadHint.style.display = state.create.uploaded ? "block" : "none";
+    const aiWearSrc = state.create.aiWearUploadSource === "brand" ? "brand" : "local";
+    const tabLoc = $("#aiWearTabLocal");
+    const tabBr = $("#aiWearTabBrand");
+    if (tabLoc && tabBr) {
+      const isLoc = aiWearSrc === "local";
+      tabLoc.classList.toggle("active", isLoc);
+      tabBr.classList.toggle("active", !isLoc);
+      tabLoc.setAttribute("aria-selected", isLoc ? "true" : "false");
+      tabBr.setAttribute("aria-selected", isLoc ? "false" : "true");
+    }
+
+    if (uploadHint) {
+      uploadHint.style.display = !isAltStudio && !isAiWear && !isPoseFission && !isAiVideo ? "block" : "none";
+      if (uploadHint.style.display !== "none") {
+        uploadHint.textContent = isProductSet
+          ? "最多上传5张图，10M以内，800×800～4096×4096"
+          : "上传多角度产品图或细节图";
+      }
+    }
+
+    const fashionWorkbenchTitle = $("#fashionWorkbenchTitle");
+    if (fashionWorkbenchTitle) {
+      fashionWorkbenchTitle.textContent = isProductSet ? "商品主图与详情图" : "多角度服装图&搭配图";
+    }
+
+    const mainSubFashionBlock = $("#mainSubFashionBlock");
+    const mainSubProductBlock = $("#mainSubProductBlock");
+    const mainSubHelpFashion = $("#mainSubHelpFashion");
+    const mainSubHelpProduct = $("#mainSubHelpProduct");
+    if (mainSubFashionBlock && mainSubProductBlock) {
+      mainSubFashionBlock.hidden = isProductSet;
+      mainSubProductBlock.hidden = !isProductSet;
+    }
+    if (mainSubHelpFashion && mainSubHelpProduct) {
+      mainSubHelpFashion.hidden = isProductSet;
+      mainSubHelpProduct.hidden = !isProductSet;
+    }
+
+    if (prompt) {
+      prompt.placeholder = isProductSet
+        ? "描述商品信息与期望的主图/详情风格（如卖点、适用人群）"
+        : "描述您的产品信息和期望的图片风格";
+    }
 
     const allImgs = state.create.sourceImages || [];
-    const fashionCap = 3;
+    const fashionCap = maxUploadSlots();
     const msCap = 10;
     if (uploadPreviewList) {
       const imgs = allImgs.slice(0, fashionCap);
       uploadPreviewList.innerHTML = buildUploadPreviewItemsHtml(imgs);
-      uploadPreviewList.style.display = imgs.length ? "grid" : "none";
+      uploadPreviewList.style.display = !isAiWear && !isPoseFission && !isAiVideo && imgs.length ? "grid" : "none";
+    }
+    const aiWearPreviewList = $("#aiWearPreviewList");
+    if (aiWearPreviewList) {
+      const imgsW = allImgs.slice(0, fashionCap);
+      aiWearPreviewList.innerHTML = buildUploadPreviewItemsHtml(imgsW);
+      aiWearPreviewList.style.display = isAiWear && imgsW.length ? "grid" : "none";
     }
     if (modelswapPreviewList) {
       const imgs = allImgs.slice(0, msCap);
@@ -477,21 +689,153 @@
     }
     if (modelswapDropzone) {
       modelswapDropzone.classList.toggle("has-images", allImgs.length > 0);
+      modelswapDropzone.setAttribute(
+        "aria-label",
+        isSceneChange ? "上传模特图" : "上传真人试穿图"
+      );
     }
     if (modelswapDropzoneInner) {
       modelswapDropzoneInner.style.display = "";
       const p = modelswapDropzoneInner.querySelector(".modelswap-drop-text");
       if (p) {
         if (allImgs.length) {
-          p.textContent = "点击或拖拽继续添加试穿图（最多10张）";
+          p.textContent = isSceneChange
+            ? "点击或拖拽继续添加模特图（最多10张）"
+            : "点击或拖拽继续添加试穿图（最多10张）";
         } else {
-          p.textContent = "拖拽或点击上传真人试穿图";
+          p.textContent = isSceneChange ? "拖拽或点击上传模特图" : "拖拽或点击上传真人试穿图";
         }
       }
     }
     if (modelswapAfterPanel) {
-      modelswapAfterPanel.hidden = !isModelSwap || !allImgs.length;
+      modelswapAfterPanel.hidden = !isAltStudio || !allImgs.length;
     }
+
+    const aiWearDropzone = $("#aiWearDropzone");
+    if (aiWearDropzone) {
+      aiWearDropzone.classList.toggle("has-images", allImgs.length > 0);
+    }
+    const aiWearDropText = $("#aiWearDropText");
+    if (aiWearDropText) {
+      aiWearDropText.textContent = allImgs.length ? "点击或拖拽继续添加服装图（最多3张）" : "拖拽或点击上传";
+    }
+    const aiWearAfterPanelEl = $("#aiWearAfterPanel");
+    if (aiWearAfterPanelEl) {
+      aiWearAfterPanelEl.hidden = !isAiWear || !allImgs.length;
+    }
+    const fashionAfterPanelEl = $("#fashionAfterPanel");
+    if (fashionAfterPanelEl) {
+      fashionAfterPanelEl.hidden = isAltStudio || isAiWear || isPoseFission || !allImgs.length;
+    }
+
+    const poseReqBanner = $("#poseReqBanner");
+    const poseRulesLink = $("#poseRulesLink");
+    if (poseReqBanner) {
+      poseReqBanner.hidden = !(state.create.poseTipsBannerVisible !== false);
+    }
+    if (poseRulesLink) {
+      poseRulesLink.setAttribute(
+        "aria-expanded",
+        state.create.poseTipsBannerVisible !== false ? "true" : "false"
+      );
+    }
+    const posePreviewList = $("#posePreviewList");
+    if (posePreviewList) {
+      const imgsP = allImgs.slice(0, 3);
+      posePreviewList.innerHTML = buildUploadPreviewItemsHtml(imgsP);
+      posePreviewList.style.display = isPoseFission && imgsP.length ? "grid" : "none";
+    }
+    const poseDropzoneEl = $("#poseDropzone");
+    if (poseDropzoneEl) {
+      poseDropzoneEl.classList.toggle("has-images", isPoseFission && allImgs.length > 0);
+    }
+    const poseDropText = $("#poseDropText");
+    if (poseDropText) {
+      if (isPoseFission) {
+        poseDropText.textContent = allImgs.length
+          ? "点击或拖拽继续添加姿势图（最多3张）"
+          : "拖拽/粘贴 或 点击上传模特姿势图";
+      }
+    }
+    const poseAfterPanelEl = $("#poseAfterPanel");
+    if (poseAfterPanelEl) {
+      poseAfterPanelEl.hidden = !isPoseFission || !allImgs.length;
+    }
+    const posePromptEl = $("#posePrompt");
+    if (posePromptEl) posePromptEl.value = state.create.prompt || "";
+    const poseSizeEl = $("#poseSize");
+    const poseClarityEl = $("#poseClarity");
+    const poseModelLevelEl = $("#poseModelLevel");
+    const poseOutputCountEl = $("#poseOutputCount");
+    if (poseSizeEl) poseSizeEl.value = state.create.size;
+    if (poseClarityEl) poseClarityEl.value = state.create.clarity || "4K 超清";
+    if (poseModelLevelEl) poseModelLevelEl.value = state.create.modelLevel || "高级模型";
+    if (poseOutputCountEl) {
+      const ocp = Math.min(4, Math.max(1, Number(state.create.outputCount) || 4));
+      poseOutputCountEl.value = String(ocp);
+    }
+
+    const aiVideoDropzone = $("#aiVideoDropzone");
+    const aiVideoDropEmpty = $("#aiVideoDropEmpty");
+    const aiVideoInlinePreview = $("#aiVideoInlinePreview");
+    const aiVideoInlineImg = $("#aiVideoInlineImg");
+    if (isAiVideo && aiVideoDropzone && aiVideoDropEmpty && aiVideoInlinePreview && aiVideoInlineImg) {
+      const vsrc = allImgs[0];
+      aiVideoDropzone.classList.toggle("has-images", !!vsrc);
+      if (vsrc) {
+        aiVideoInlineImg.src = vsrc;
+        aiVideoInlinePreview.hidden = false;
+        aiVideoDropEmpty.hidden = true;
+      } else {
+        aiVideoInlinePreview.hidden = true;
+        aiVideoDropEmpty.hidden = false;
+      }
+    } else if (aiVideoInlinePreview && aiVideoDropEmpty) {
+      aiVideoInlinePreview.hidden = true;
+      aiVideoDropEmpty.hidden = false;
+    }
+    const aiVideoDropText = $("#aiVideoDropText");
+    if (aiVideoDropText && isAiVideo) {
+      aiVideoDropText.textContent = "拖拽或点击上传";
+    }
+    const aiVideoSrc = state.create.aiVideoUploadSource === "brand" ? "brand" : "local";
+    const aiVideoTabLoc = $("#aiVideoTabLocal");
+    const aiVideoTabBr = $("#aiVideoTabBrand");
+    if (aiVideoTabLoc && aiVideoTabBr) {
+      const isVLoc = aiVideoSrc === "local";
+      aiVideoTabLoc.classList.toggle("active", isVLoc);
+      aiVideoTabBr.classList.toggle("active", !isVLoc);
+      aiVideoTabLoc.setAttribute("aria-selected", isVLoc ? "true" : "false");
+      aiVideoTabBr.setAttribute("aria-selected", isVLoc ? "false" : "true");
+    }
+    const aiVideoPromptEl = $("#aiVideoPrompt");
+    if (aiVideoPromptEl) aiVideoPromptEl.value = state.create.videoPrompt || "";
+    const aiVideoDurationEl = $("#aiVideoDuration");
+    if (aiVideoDurationEl) {
+      let vd = state.create.videoDuration || "10秒";
+      if (vd === "15秒") {
+        vd = "10秒";
+        state.create.videoDuration = vd;
+        saveState();
+      }
+      if (![...aiVideoDurationEl.options].some((o) => o.value === vd)) vd = "10秒";
+      aiVideoDurationEl.value = vd;
+    }
+    const aiVideoModelLevelEl = $("#aiVideoModelLevel");
+    if (aiVideoModelLevelEl) {
+      aiVideoModelLevelEl.value = state.create.videoModelLevel || "高级模型";
+    }
+    const aiVideoClaritySel = $("#aiVideoClaritySelect");
+    if (aiVideoClaritySel) {
+      const vc = state.create.videoClarity || "720P";
+      if ([...aiVideoClaritySel.options].some((o) => o.value === vc)) aiVideoClaritySel.value = vc;
+      else aiVideoClaritySel.value = "720P";
+    }
+    state.create.videoAspect = "自适应";
+    const aiVideoAspectDisplay = $("#aiVideoAspectDisplay");
+    if (aiVideoAspectDisplay) aiVideoAspectDisplay.textContent = "自适应";
+
+    syncAllDescPromptCounts();
 
     const needPickMode = !state.create.modePicked;
     if (createPage) createPage.classList.toggle("mode-required", needPickMode);
@@ -500,7 +844,49 @@
       modeGate.setAttribute("aria-hidden", needPickMode ? "false" : "true");
     }
 
-    syncPowerUI();
+    if (isSceneChange && mainSubState.modelSelected.length) {
+      mainSubState.modelSelected = [];
+    }
+    syncMainSubUI();
+  }
+
+  function getRemainingPower() {
+    const v = Number(state.user.remainingPower);
+    if (Number.isFinite(v) && v >= 0) return Math.floor(v);
+    // 兜底：演示环境没有后端返回剩余算力，这里给一个固定值用于展示
+    return state.user.vip ? 20000 : 8000;
+  }
+
+  function renderAssetsPreview() {
+    const elPower = $("#assetsPowerPreview");
+    const elOrders = $("#assetsOrdersPreview");
+    if (!elPower && !elOrders) return;
+
+    const remainingNow = getRemainingPower();
+
+    // 演示数据：最新 -> 最旧
+    const records = [
+      { date: "2026-03-25", title: "AI视频（图生视频）", consume: 400, desc: "720P / 10秒" },
+      { date: "2026-03-20", title: "姿势裂变", consume: 240, desc: "4张 / 高级模型" },
+      { date: "2026-03-12", title: "服装套图", consume: 180, desc: "2张 / 4K 超清" },
+      { date: "2026-03-05", title: "模特换场景", consume: 600, desc: "场景重构" },
+    ];
+
+    if (elPower) {
+      const latest = records[0];
+      const beforeLatestRemain = Math.max(0, remainingNow + latest.consume);
+      elPower.innerHTML = `当前剩余：${remainingNow}点<br/>最近消耗：${escapeHtml(latest.title)} ${latest.consume}点（变动前约${beforeLatestRemain}点）`;
+    }
+
+    if (elOrders) {
+      const demoOrders = [
+        { id: "ORD-20260320-001", plan: "绘鸟AI VIP 月会员", price: "59.00", time: "2026-03-20", status: "支付成功" },
+        { id: "ORD-20260220-012", plan: "绘鸟AI VIP 月会员", price: "59.00", time: "2026-02-20", status: "支付成功" },
+        { id: "ORD-20260120-008", plan: "绘鸟AI VIP 年会员", price: "659.00", time: "2026-01-20", status: "支付成功" },
+      ];
+      const count = demoOrders.length;
+      elOrders.innerHTML = `订单数量：${count}<br/>最近：${escapeHtml(demoOrders[0].plan)}（${escapeHtml(demoOrders[0].status)}）`;
+    }
   }
 
   function renderProfile() {
@@ -518,12 +904,15 @@
     if (avatar) avatar.textContent = isLoggedIn ? (state.user.name || "演").slice(0, 1) : "未";
     if (nameEl) nameEl.textContent = isLoggedIn ? state.user.name : "未登录";
     if (idEl) idEl.textContent = isLoggedIn ? "ID: " + state.user.id : "登录后可同步任务记录和素材";
-    if (editBtn) editBtn.textContent = isLoggedIn ? "编辑" : "立即登录";
+    if (editBtn) editBtn.textContent = isLoggedIn ? "剩余算力：" + getRemainingPower() + "点" : "立即登录";
     if (topProfileBtn) topProfileBtn.textContent = isLoggedIn ? "我" : "登";
     if (vipBtn) vipBtn.textContent = state.user.vip ? "已开通" : "立即开通";
     if (vipDesc) {
       vipDesc.textContent = state.user.vip ? "你已开通会员，支持高清导出与批量处理" : "解锁高清导出、批量处理、商用授权";
     }
+
+    // 我的素材下方的算力记录/订单中心预览
+    renderAssetsPreview();
   }
 
   function renderAll() {
@@ -539,7 +928,7 @@
   tabs.forEach((btn) => {
     btn.addEventListener("click", () => {
       const next = btn.getAttribute("data-tab") || "home";
-      if (next === "create" && state.tab === "home") {
+      if (next === "create") {
         state.create.modePicked = false;
         saveState();
         renderCreate();
@@ -604,6 +993,12 @@
       showToast("打开个人中心");
     });
   }
+  const profileSettingsBtn = $("#profileSettingsBtn");
+  if (profileSettingsBtn) {
+    profileSettingsBtn.addEventListener("click", () => {
+      openSettingsPage();
+    });
+  }
   const startCreateBtn = $("#startCreateBtn");
   if (startCreateBtn) startCreateBtn.addEventListener("click", () => openCreateFromHome());
 
@@ -616,19 +1011,12 @@
   const featureGrid = $("#featureGrid");
   if (featureGrid) {
     featureGrid.addEventListener("click", (e) => {
-      const card = e.target.closest(".tool-item[data-feature], .feature-card[data-feature]");
-      if (!card) return;
-      const featureToMode = {
-        fitting: "模特换装",
-        product: "电商主图",
-        pose: "姿势裂变",
-      };
-      const key = card.getAttribute("data-feature") || "product";
-      state.create.mode = featureToMode[key] || "电商主图";
-      saveState();
-      renderCreate();
+      const card = e.target.closest(".tool-item[data-create-mode], .feature-card[data-create-mode]");
+      if (!card || card.classList.contains("placeholder")) return;
+      const modeName = card.getAttribute("data-create-mode");
+      if (!modeName) return;
+      pickCreateMode(modeName, { fromSmartTool: true });
       setTab("create");
-      showToast("已选择能力：" + state.create.mode);
     });
 
     const pagerDots = $$("#toolPager .dot");
@@ -976,12 +1364,12 @@
         const modeMap = {
           fashion_set: "电商主图",
           real_model: "模特换装",
-          model_scene: "场景重构",
-          ai_wear: "模特换装",
+          model_scene: "模特换场景",
+          ai_wear: "AI穿衣",
           pose: "姿势裂变",
           product_set: "电商主图",
           ai_video: "电商主图",
-          style_copy: "场景重构",
+          style_copy: "风格复刻",
           batch: "电商主图",
         };
         state.create.mode = modeMap[hit.cat] || "电商主图";
@@ -1009,6 +1397,10 @@
   const modelswapSize = $("#modelswapSize");
   const modelswapClarity = $("#modelswapClarity");
   const modelswapModelLevel = $("#modelswapModelLevel");
+  const modelswapOutputCount = $("#modelswapOutputCount");
+  const modelswapPickModelBtn = $("#modelswapPickModelBtn");
+  const modelswapPickSceneBtn = $("#modelswapPickSceneBtn");
+  const modelswapRulesBtn = $("#modelswapRulesBtn");
   const modelswapAiBtn = $("#modelswapAiBtn");
   const mockUploadBtn = $("#mockUploadBtn");
   const uploadPlusBtn = $("#uploadPlusBtn");
@@ -1060,12 +1452,68 @@
       selling: { checked: false, count: 0 },
       size: { checked: false, count: 0 },
       white: { checked: false, count: 0 },
+      detail: { checked: false, count: 0 },
+      pscene: { checked: false, count: 0 },
+      sellingP: { checked: false, count: 0 },
+      whiteP: { checked: false, count: 0 },
     },
     sceneSelected: [],
     modelSelected: [],
+    poseSelected: [],
   };
+  function resetFashionWorkbenchMainSubTypes() {
+    Object.keys(mainSubState.types).forEach((k) => {
+      mainSubState.types[k].checked = false;
+      mainSubState.types[k].count = 0;
+    });
+    mainSubState.sceneSelected = [];
+    mainSubState.modelSelected = [];
+  }
+
+  /** 应用创作模式（与创作模式选择门一致）：副作用 + 状态 + 刷新。fromSmartTool 为 true 时不弹 Toast。 */
+  function pickCreateMode(modeName, opts = {}) {
+    const fromSmartTool = !!opts.fromSmartTool;
+    const prevMode = state.create.mode || "";
+    if (modeName !== prevMode) {
+      hasStartedGeneration = false;
+    }
+    state.create.mode = modeName;
+    state.create.modePicked = true;
+
+    if (modeName === "模特换场景") {
+      mainSubState.modelSelected = [];
+    }
+    if (prevMode === "姿势裂变" && modeName !== "姿势裂变") {
+      mainSubState.poseSelected = [];
+    }
+    if ((modeName === "商品套图" || modeName === "服装套图") && modeName !== prevMode) {
+      resetFashionWorkbenchMainSubTypes();
+    }
+    if (modeName === "AI视频" && prevMode !== "AI视频") {
+      resetFashionWorkbenchMainSubTypes();
+    }
+    if (!isPortraitStudioMode()) {
+      const cap = maxUploadSlots();
+      if ((state.create.sourceImages || []).length > cap) {
+        state.create.sourceImages = state.create.sourceImages.slice(0, cap);
+        state.create.sourceImage = state.create.sourceImages[0] || "./images/上衣原图.webp";
+        state.create.uploaded = state.create.sourceImages.length > 0;
+      }
+    }
+
+    const uploadCount = document.getElementById("uploadCount");
+    if (uploadCount) uploadCount.textContent = String(maxUploadSlots());
+
+    if (!fromSmartTool) {
+      showToast("已选择模式：" + modeName);
+    }
+    saveState();
+    renderCreate();
+  }
+
   const sceneOptions = ["城市街景", "室内棚拍", "居家场景", "户外运动", "咖啡店"];
   const modelOptions = ["亚洲女模", "欧美女模", "亚洲男模", "欧美男模", "童模"];
+  const poseOptions = ["站姿正面", "侧身站立", "行走动态", "坐姿", "手部展示", "回眸"];
   let pickerKind = "";
   let pickerSelected = [];
 
@@ -1090,6 +1538,10 @@
         selling: "卖点图",
         size: "尺码图",
         white: "白底图",
+        detail: "细节图",
+        pscene: "场景图",
+        sellingP: "卖点图",
+        whiteP: "白底图",
       }[key] || "结果图"
     );
   }
@@ -1171,6 +1623,8 @@
           kind: "task",
           status: "done",
         });
+        // 将“成功创作的原图”写入我的品牌素材库
+        addGeneratedResultsToBrandAssets();
         saveState();
         renderMessages();
         syncCreateResultVisibility();
@@ -1200,13 +1654,55 @@
 
   function syncPowerUI() {
     const perImage = getPowerPerImage();
-    if (state.create.mode === "真人换模特") {
-      const out = state.create.uploaded ? 4 : 0;
+    if (isPortraitStudioMode()) {
+      const cnt = Math.min(4, Math.max(1, Number(state.create.outputCount) || 4));
+      const out = state.create.uploaded ? cnt : 0;
+      const totalPower = out * perImage;
+      const emptyHint = state.create.mode === "模特换场景" ? "请先上传模特图" : "请先上传真人试穿图";
+      if (createPowerHint) {
+        createPowerHint.textContent = out ? `${out}张 * 每张${perImage}点 = ${totalPower}点` : emptyHint;
+      }
+      if (previewBtn) {
+        previewBtn.textContent = `开始生成(${totalPower}算力)`;
+        previewBtn.disabled = !state.create.uploaded;
+      }
+      return;
+    }
+    if (isAiWearMode()) {
+      const cnt = Math.min(4, Math.max(1, Number(state.create.outputCount) || 4));
+      const out = state.create.uploaded ? cnt : 0;
       const totalPower = out * perImage;
       if (createPowerHint) {
-        createPowerHint.textContent = out
-          ? `换模特预览${out}张 * 每张${perImage}点 = ${totalPower}点`
-          : "请先上传真人试穿图";
+        createPowerHint.textContent = out ? `${out}张 * 每张${perImage}点 = ${totalPower}点` : "请先上传服装图";
+      }
+      if (previewBtn) {
+        previewBtn.textContent = `开始生成(${totalPower}算力)`;
+        previewBtn.disabled = !state.create.uploaded;
+      }
+      return;
+    }
+    if (isAiVideoMode()) {
+      const totalPower = getAiVideoPowerTotal();
+      const up = state.create.uploaded;
+      const vcl = state.create.videoClarity || "720P";
+      const vdu = state.create.videoDuration || "10秒";
+      if (createPowerHint) {
+        createPowerHint.textContent = up
+          ? `图生视频 · ${vcl} · ${vdu} · 消耗${totalPower}算力`
+          : "请选择生成类型";
+      }
+      if (previewBtn) {
+        previewBtn.textContent = `开始生成(${totalPower}算力)`;
+        previewBtn.disabled = !up;
+      }
+      return;
+    }
+    if (isPoseFissionMode()) {
+      const cnt = Math.min(4, Math.max(1, Number(state.create.outputCount) || 4));
+      const out = state.create.uploaded ? cnt : 0;
+      const totalPower = out * perImage;
+      if (createPowerHint) {
+        createPowerHint.textContent = out ? `${out}张 * 每张${perImage}点 = ${totalPower}点` : "请先上传模特姿势图";
       }
       if (previewBtn) {
         previewBtn.textContent = `开始生成(${totalPower}算力)`;
@@ -1225,35 +1721,57 @@
     }
   }
 
+  function syncModelswapPickerRows() {
+    const nModel = mainSubState.modelSelected.length;
+    const nScene = mainSubState.sceneSelected.length;
+    const bModel = $("#modelswapModelBadge");
+    const cardModel = $("#modelswapPickModelBtn");
+    const cardScene = $("#modelswapPickSceneBtn");
+    if (bModel) {
+      bModel.hidden = nModel <= 0;
+      bModel.textContent = nModel ? "已选" + nModel + "项" : "";
+    }
+    $$(".modelswap-scene-badge").forEach((el) => {
+      el.hidden = nScene <= 0;
+      el.textContent = nScene ? "已选" + nScene + "项" : "";
+    });
+    if (cardModel) cardModel.classList.toggle("is-active", nModel > 0);
+    if (cardScene) cardScene.classList.toggle("is-active", nScene > 0);
+  }
+
   enableMouseDragScroll(createModeOptions);
   enableMouseDragPan(createPrompt);
   enableMouseDragPan(modelswapPrompt);
+  enableMouseDragPan($("#aiWearPrompt"));
+  enableMouseDragPan($("#posePrompt"));
+  enableMouseDragPan($("#aiVideoPrompt"));
 
   function syncMainSubUI() {
-    if (!mainSubPanel) return;
-    mainSubPanel.classList.toggle("collapsed", !mainSubState.enabled);
-    if (mainSubToggle) mainSubToggle.checked = mainSubState.enabled;
-    if (mainSubBody) mainSubBody.style.display = mainSubState.enabled ? "block" : "none";
-    Object.keys(mainSubState.types).forEach((key) => {
-      const row = $(`[data-type-row="${key}"]`);
-      const check = $(`[data-type-check="${key}"]`);
-      const value = $(`[data-count-value="${key}"]`);
-      const minus = $(`[data-count-action="minus"][data-count-type="${key}"]`);
-      const plus = $(`[data-count-action="plus"][data-count-type="${key}"]`);
-      const countBox = row ? row.querySelector(".main-sub-count") : null;
-      const item = mainSubState.types[key];
-      if (item.checked && item.count < 1) item.count = 1;
-      if (!item.checked) item.count = 0;
-      if (row) {
-        row.classList.toggle("checked", item.checked);
-        row.classList.toggle("disabled", !item.checked);
-      }
-      if (countBox) countBox.classList.toggle("hidden", !item.checked);
-      if (check) check.checked = item.checked;
-      if (value) value.textContent = String(item.count);
-      if (minus) minus.disabled = !item.checked;
-      if (plus) plus.disabled = !item.checked;
-    });
+    if (mainSubPanel) {
+      mainSubPanel.classList.toggle("collapsed", !mainSubState.enabled);
+      if (mainSubToggle) mainSubToggle.checked = mainSubState.enabled;
+      if (mainSubBody) mainSubBody.style.display = mainSubState.enabled ? "block" : "none";
+      Object.keys(mainSubState.types).forEach((key) => {
+        const row = $(`[data-type-row="${key}"]`);
+        const check = $(`[data-type-check="${key}"]`);
+        const value = $(`[data-count-value="${key}"]`);
+        const minus = $(`[data-count-action="minus"][data-count-type="${key}"]`);
+        const plus = $(`[data-count-action="plus"][data-count-type="${key}"]`);
+        const countBox = row ? row.querySelector(".main-sub-count") : null;
+        const item = mainSubState.types[key];
+        if (item.checked && item.count < 1) item.count = 1;
+        if (!item.checked) item.count = 0;
+        if (row) {
+          row.classList.toggle("checked", item.checked);
+          row.classList.toggle("disabled", !item.checked);
+        }
+        if (countBox) countBox.classList.toggle("hidden", !item.checked);
+        if (check) check.checked = item.checked;
+        if (value) value.textContent = String(item.count);
+        if (minus) minus.disabled = !item.checked;
+        if (plus) plus.disabled = !item.checked;
+      });
+    }
     if (pickSceneBtn) {
       pickSceneBtn.classList.toggle("active", mainSubState.sceneSelected.length > 0);
       pickSceneBtn.textContent = mainSubState.sceneSelected.length
@@ -1266,15 +1784,33 @@
         ? `模特：已选${mainSubState.modelSelected.length}项`
         : "+ 模特（可选）";
     }
+    syncAiWearModelRow();
+    syncPosePickerRow();
+    syncModelswapPickerRows();
     syncPowerUI();
   }
 
   function openMainSubPicker(kind) {
+    if (kind === "model" && state.create.mode === "模特换场景") return;
     if (!mainSubPickerMask || !mainSubPickerModal || !mainSubPickerList || !mainSubPickerTitle) return;
     pickerKind = kind;
-    const options = kind === "scene" ? sceneOptions : modelOptions;
-    pickerSelected = Array.from(kind === "scene" ? mainSubState.sceneSelected : mainSubState.modelSelected);
-    mainSubPickerTitle.textContent = kind === "scene" ? "选择场景" : "选择模特";
+    const options =
+      kind === "scene" ? sceneOptions : kind === "pose" ? poseOptions : modelOptions;
+    pickerSelected = Array.from(
+      kind === "scene"
+        ? mainSubState.sceneSelected
+        : kind === "pose"
+          ? mainSubState.poseSelected
+          : mainSubState.modelSelected
+    );
+    mainSubPickerTitle.textContent =
+      kind === "scene"
+        ? "选择场景"
+        : kind === "pose"
+          ? "选择姿势"
+          : state.create.mode === "AI穿衣"
+            ? "选择穿衣模特"
+            : "选择模特";
     mainSubPickerList.innerHTML = options
       .map(
         (name) =>
@@ -1371,6 +1907,7 @@
     mainSubPickerConfirmBtn.addEventListener("click", () => {
       if (pickerKind === "scene") mainSubState.sceneSelected = Array.from(pickerSelected);
       if (pickerKind === "model") mainSubState.modelSelected = Array.from(pickerSelected);
+      if (pickerKind === "pose") mainSubState.poseSelected = Array.from(pickerSelected);
       syncMainSubUI();
       closeMainSubPicker();
       showToast("已更新可选项");
@@ -1380,8 +1917,32 @@
 
   if (createMode) {
     createMode.addEventListener("change", () => {
+      const prevMode = state.create.mode;
       state.create.modePicked = true;
       state.create.mode = createMode.value;
+      if (state.create.mode === "模特换场景") {
+        mainSubState.modelSelected = [];
+      }
+      if (prevMode === "姿势裂变" && state.create.mode !== "姿势裂变") {
+        mainSubState.poseSelected = [];
+      }
+      if (
+        (state.create.mode === "商品套图" || state.create.mode === "服装套图") &&
+        state.create.mode !== prevMode
+      ) {
+        resetFashionWorkbenchMainSubTypes();
+      }
+      if (state.create.mode === "AI视频" && prevMode !== "AI视频") {
+        resetFashionWorkbenchMainSubTypes();
+      }
+      if (!isPortraitStudioMode()) {
+        const cap = maxUploadSlots();
+        if ((state.create.sourceImages || []).length > cap) {
+          state.create.sourceImages = state.create.sourceImages.slice(0, cap);
+          state.create.sourceImage = state.create.sourceImages[0] || "./images/上衣原图.webp";
+          state.create.uploaded = state.create.sourceImages.length > 0;
+        }
+      }
       saveState();
       renderCreate();
     });
@@ -1390,17 +1951,8 @@
     createModeGate.addEventListener("click", (e) => {
       const pickBtn = e.target.closest("[data-create-mode-pick]");
       if (!pickBtn) return;
-      const modeName = pickBtn.getAttribute("data-create-mode-pick") || "电商主图";
-      state.create.mode = modeName;
-      state.create.modePicked = true;
-      if (modeName !== "真人换模特" && (state.create.sourceImages || []).length > 3) {
-        state.create.sourceImages = state.create.sourceImages.slice(0, 3);
-        state.create.sourceImage = state.create.sourceImages[0] || "./images/上衣原图.webp";
-        state.create.uploaded = state.create.sourceImages.length > 0;
-      }
-      saveState();
-      renderCreate();
-      showToast("已选择模式：" + modeName);
+      const modeName = pickBtn.getAttribute("data-create-mode-pick") || "商品套图";
+      pickCreateMode(modeName, {});
     });
   }
   if (createSize) {
@@ -1513,9 +2065,411 @@
       openBrandModal();
     });
   }
+
+  const aiWearSourceTabs = $("#aiWearSourceTabs");
+  if (aiWearSourceTabs) {
+    aiWearSourceTabs.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-ai-wear-source]");
+      if (!btn || !aiWearSourceTabs.contains(btn)) return;
+      const next = btn.getAttribute("data-ai-wear-source") === "brand" ? "brand" : "local";
+      state.create.aiWearUploadSource = next;
+      saveState();
+      renderCreate();
+      if (next === "brand" && state.create.modePicked && isAiWearMode()) {
+        openBrandModal();
+      }
+    });
+  }
+  const aiWearDropzoneEl = $("#aiWearDropzone");
+  if (aiWearDropzoneEl) {
+    aiWearDropzoneEl.addEventListener("click", () => {
+      if (!isAiWearMode()) return;
+      if (!state.create.modePicked) {
+        showToast("请先选择创作模式");
+        return;
+      }
+      if (state.create.aiWearUploadSource === "brand") openBrandModal();
+      else openLocalImagePicker();
+    });
+    aiWearDropzoneEl.addEventListener("keydown", (e) => {
+      if (!isAiWearMode()) return;
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        if (!state.create.modePicked) {
+          showToast("请先选择创作模式");
+          return;
+        }
+        if (state.create.aiWearUploadSource === "brand") openBrandModal();
+        else openLocalImagePicker();
+      }
+    });
+    ["dragenter", "dragover"].forEach((ev) => {
+      aiWearDropzoneEl.addEventListener(ev, (e) => {
+        if (!isAiWearMode()) return;
+        e.preventDefault();
+        e.stopPropagation();
+      });
+    });
+    aiWearDropzoneEl.addEventListener("drop", (e) => {
+      if (!isAiWearMode()) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (!state.create.modePicked) {
+        showToast("请先选择创作模式");
+        return;
+      }
+      const dt = e.dataTransfer;
+      if (!dt || !dt.files || !dt.files.length) return;
+      appendLocalImageFiles(dt.files);
+    });
+  }
+
+  const aiVideoSourceTabs = $("#aiVideoSourceTabs");
+  if (aiVideoSourceTabs) {
+    aiVideoSourceTabs.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-ai-video-source]");
+      if (!btn || !aiVideoSourceTabs.contains(btn)) return;
+      const next = btn.getAttribute("data-ai-video-source") === "brand" ? "brand" : "local";
+      state.create.aiVideoUploadSource = next;
+      saveState();
+      renderCreate();
+      if (next === "brand" && state.create.modePicked && isAiVideoMode()) {
+        openBrandModal();
+      }
+    });
+  }
+  const aiVideoDropzoneEl = $("#aiVideoDropzone");
+  if (aiVideoDropzoneEl) {
+    aiVideoDropzoneEl.addEventListener("click", () => {
+      if (!isAiVideoMode()) return;
+      if (!state.create.modePicked) {
+        showToast("请先选择创作模式");
+        return;
+      }
+      if (state.create.aiVideoUploadSource === "brand") openBrandModal();
+      else openLocalImagePicker();
+    });
+    aiVideoDropzoneEl.addEventListener("keydown", (e) => {
+      if (!isAiVideoMode()) return;
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        if (!state.create.modePicked) {
+          showToast("请先选择创作模式");
+          return;
+        }
+        if (state.create.aiVideoUploadSource === "brand") openBrandModal();
+        else openLocalImagePicker();
+      }
+    });
+    ["dragenter", "dragover"].forEach((ev) => {
+      aiVideoDropzoneEl.addEventListener(ev, (e) => {
+        if (!isAiVideoMode()) return;
+        e.preventDefault();
+        e.stopPropagation();
+      });
+    });
+    aiVideoDropzoneEl.addEventListener("drop", (e) => {
+      if (!isAiVideoMode()) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (!state.create.modePicked) {
+        showToast("请先选择创作模式");
+        return;
+      }
+      const dt = e.dataTransfer;
+      if (!dt || !dt.files || !dt.files.length) return;
+      appendLocalImageFiles(dt.files);
+    });
+  }
+  const aiVideoPromptInput = $("#aiVideoPrompt");
+  if (aiVideoPromptInput) {
+    aiVideoPromptInput.addEventListener("input", () => {
+      let v = aiVideoPromptInput.value;
+      if (v.length > 2500) v = v.slice(0, 2500);
+      aiVideoPromptInput.value = v;
+      state.create.videoPrompt = v;
+      syncAllDescPromptCounts();
+      saveState();
+    });
+  }
+  const aiVideoDurationEl = $("#aiVideoDuration");
+  if (aiVideoDurationEl) {
+    aiVideoDurationEl.addEventListener("change", () => {
+      state.create.videoDuration = aiVideoDurationEl.value;
+      saveState();
+      syncPowerUI();
+    });
+  }
+  const aiVideoModelLevelVideoEl = $("#aiVideoModelLevel");
+  if (aiVideoModelLevelVideoEl) {
+    aiVideoModelLevelVideoEl.addEventListener("change", () => {
+      state.create.videoModelLevel = aiVideoModelLevelVideoEl.value;
+      saveState();
+    });
+  }
+  const aiVideoClaritySelectEl = $("#aiVideoClaritySelect");
+  if (aiVideoClaritySelectEl) {
+    aiVideoClaritySelectEl.addEventListener("change", () => {
+      state.create.videoClarity = aiVideoClaritySelectEl.value;
+      saveState();
+      syncPowerUI();
+    });
+  }
+  const aiVideoInlineRemove = $("#aiVideoInlineRemove");
+  if (aiVideoInlineRemove) {
+    aiVideoInlineRemove.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isAiVideoMode()) return;
+      const imgs = Array.from(state.create.sourceImages || []);
+      if (!imgs.length) return;
+      imgs.splice(0, 1);
+      state.create.sourceImages = imgs;
+      state.create.uploaded = imgs.length > 0;
+      state.create.sourceImage = imgs[0] || "./images/上衣原图.webp";
+      if (!state.create.uploaded) state.create.fileName = "";
+      saveState();
+      renderCreate();
+      showToast("已移除参考图");
+    });
+  }
+
+  const aiWearPickModelBtn = $("#aiWearPickModelBtn");
+  if (aiWearPickModelBtn) {
+    aiWearPickModelBtn.addEventListener("click", () => {
+      if (!isAiWearMode()) return;
+      openMainSubPicker("model");
+    });
+  }
+  const aiWearPromptEl = $("#aiWearPrompt");
+  if (aiWearPromptEl) {
+    aiWearPromptEl.addEventListener("input", () => {
+      let v = aiWearPromptEl.value;
+      if (v.length > 2500) v = v.slice(0, 2500);
+      aiWearPromptEl.value = v;
+      state.create.prompt = v;
+      syncAllDescPromptCounts();
+      saveState();
+    });
+  }
+  const aiWearSizeEl = $("#aiWearSize");
+  if (aiWearSizeEl) {
+    aiWearSizeEl.addEventListener("change", () => {
+      state.create.size = aiWearSizeEl.value;
+      saveState();
+    });
+  }
+  const aiWearClarityEl = $("#aiWearClarity");
+  if (aiWearClarityEl) {
+    aiWearClarityEl.addEventListener("change", () => {
+      state.create.clarity = aiWearClarityEl.value;
+      saveState();
+      syncPowerUI();
+    });
+  }
+  const aiWearModelLevelEl = $("#aiWearModelLevel");
+  if (aiWearModelLevelEl) {
+    aiWearModelLevelEl.addEventListener("change", () => {
+      state.create.modelLevel = aiWearModelLevelEl.value;
+      saveState();
+      syncPowerUI();
+    });
+  }
+  const aiWearOutputCountEl = $("#aiWearOutputCount");
+  if (aiWearOutputCountEl) {
+    aiWearOutputCountEl.addEventListener("change", () => {
+      const n = Math.min(4, Math.max(1, parseInt(aiWearOutputCountEl.value, 10) || 4));
+      state.create.outputCount = n;
+      saveState();
+      syncPowerUI();
+    });
+  }
+  const aiWearAiBtn = $("#aiWearAiBtn");
+  if (aiWearAiBtn) {
+    aiWearAiBtn.addEventListener("click", () => {
+      if (!state.create.uploaded) {
+        showToast("请先上传服装图");
+        return;
+      }
+      const text = AI_ANALYSIS_PROMPT.length > 2500 ? AI_ANALYSIS_PROMPT.slice(0, 2500) : AI_ANALYSIS_PROMPT;
+      state.create.prompt = text;
+      saveState();
+      renderCreate();
+      showToast("已生成AI分析参考文案");
+    });
+  }
+
+  const poseRulesLink = $("#poseRulesLink");
+  if (poseRulesLink) {
+    poseRulesLink.addEventListener("click", () => {
+      if (!isPoseFissionMode()) return;
+      const cur = state.create.poseTipsBannerVisible !== false;
+      state.create.poseTipsBannerVisible = !cur;
+      saveState();
+      renderCreate();
+    });
+  }
+  const poseReqBannerClose = $("#poseReqBannerClose");
+  if (poseReqBannerClose) {
+    poseReqBannerClose.addEventListener("click", () => {
+      if (!isPoseFissionMode()) return;
+      state.create.poseTipsBannerVisible = false;
+      saveState();
+      renderCreate();
+    });
+  }
+  const poseDropzoneEl2 = $("#poseDropzone");
+  if (poseDropzoneEl2) {
+    poseDropzoneEl2.addEventListener("click", () => {
+      if (!isPoseFissionMode()) return;
+      if (!state.create.modePicked) {
+        showToast("请先选择创作模式");
+        return;
+      }
+      openLocalImagePicker();
+    });
+    poseDropzoneEl2.addEventListener("keydown", (e) => {
+      if (!isPoseFissionMode()) return;
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        if (!state.create.modePicked) {
+          showToast("请先选择创作模式");
+          return;
+        }
+        openLocalImagePicker();
+      }
+    });
+    ["dragenter", "dragover"].forEach((ev) => {
+      poseDropzoneEl2.addEventListener(ev, (e) => {
+        if (!isPoseFissionMode()) return;
+        e.preventDefault();
+        e.stopPropagation();
+      });
+    });
+    poseDropzoneEl2.addEventListener("drop", (e) => {
+      if (!isPoseFissionMode()) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (!state.create.modePicked) {
+        showToast("请先选择创作模式");
+        return;
+      }
+      const dt = e.dataTransfer;
+      if (!dt || !dt.files || !dt.files.length) return;
+      appendLocalImageFiles(dt.files);
+    });
+    poseDropzoneEl2.addEventListener("paste", (e) => {
+      if (!isPoseFissionMode()) return;
+      const items = e.clipboardData && e.clipboardData.items;
+      if (!items || !items.length) return;
+      const files = [];
+      for (let i = 0; i < items.length; i += 1) {
+        const it = items[i];
+        if (it.kind === "file" && it.type && it.type.startsWith("image/")) {
+          const f = it.getAsFile();
+          if (f) files.push(f);
+        }
+      }
+      if (!files.length) return;
+      e.preventDefault();
+      if (!state.create.modePicked) {
+        showToast("请先选择创作模式");
+        return;
+      }
+      appendLocalImageFiles(files);
+    });
+  }
+  const poseLocalBtn = $("#poseLocalBtn");
+  if (poseLocalBtn) {
+    poseLocalBtn.addEventListener("click", () => {
+      if (!isPoseFissionMode()) return;
+      openLocalImagePicker();
+    });
+  }
+  const poseBrandBtn = $("#poseBrandBtn");
+  if (poseBrandBtn) {
+    poseBrandBtn.addEventListener("click", () => {
+      if (!isPoseFissionMode()) return;
+      if (!state.create.modePicked) {
+        showToast("请先选择创作模式");
+        return;
+      }
+      openBrandModal();
+    });
+  }
+  const posePickPoseBtn = $("#posePickPoseBtn");
+  if (posePickPoseBtn) {
+    posePickPoseBtn.addEventListener("click", () => {
+      if (!isPoseFissionMode()) return;
+      openMainSubPicker("pose");
+    });
+  }
+  const posePromptInput = $("#posePrompt");
+  if (posePromptInput) {
+    posePromptInput.addEventListener("input", () => {
+      let v = posePromptInput.value;
+      if (v.length > 2500) v = v.slice(0, 2500);
+      posePromptInput.value = v;
+      state.create.prompt = v;
+      syncAllDescPromptCounts();
+      saveState();
+    });
+  }
+  const poseSizeInput = $("#poseSize");
+  if (poseSizeInput) {
+    poseSizeInput.addEventListener("change", () => {
+      state.create.size = poseSizeInput.value;
+      saveState();
+    });
+  }
+  const poseClarityInput = $("#poseClarity");
+  if (poseClarityInput) {
+    poseClarityInput.addEventListener("change", () => {
+      state.create.clarity = poseClarityInput.value;
+      saveState();
+      syncPowerUI();
+    });
+  }
+  const poseModelLevelInput = $("#poseModelLevel");
+  if (poseModelLevelInput) {
+    poseModelLevelInput.addEventListener("change", () => {
+      state.create.modelLevel = poseModelLevelInput.value;
+      saveState();
+      syncPowerUI();
+    });
+  }
+  const poseOutputCountInput = $("#poseOutputCount");
+  if (poseOutputCountInput) {
+    poseOutputCountInput.addEventListener("change", () => {
+      const n = Math.min(4, Math.max(1, parseInt(poseOutputCountInput.value, 10) || 4));
+      state.create.outputCount = n;
+      saveState();
+      syncPowerUI();
+    });
+  }
+  const poseAiBtn = $("#poseAiBtn");
+  if (poseAiBtn) {
+    poseAiBtn.addEventListener("click", () => {
+      if (!isPoseFissionMode()) return;
+      if (!state.create.uploaded) {
+        showToast("请先上传模特姿势图");
+        return;
+      }
+      const text = AI_ANALYSIS_PROMPT.length > 2500 ? AI_ANALYSIS_PROMPT.slice(0, 2500) : AI_ANALYSIS_PROMPT;
+      state.create.prompt = text;
+      saveState();
+      renderCreate();
+      showToast("已生成AI分析参考文案");
+    });
+  }
+
   if (modelswapPrompt) {
     modelswapPrompt.addEventListener("input", () => {
-      state.create.prompt = modelswapPrompt.value;
+      let v = modelswapPrompt.value;
+      if (v.length > 2500) v = v.slice(0, 2500);
+      modelswapPrompt.value = v;
+      state.create.prompt = v;
+      syncAllDescPromptCounts();
       saveState();
     });
   }
@@ -1539,10 +2493,37 @@
       syncPowerUI();
     });
   }
+  if (modelswapOutputCount) {
+    modelswapOutputCount.addEventListener("change", () => {
+      const n = Math.min(4, Math.max(1, parseInt(modelswapOutputCount.value, 10) || 4));
+      state.create.outputCount = n;
+      saveState();
+      syncPowerUI();
+    });
+  }
+  if (modelswapPickModelBtn) {
+    modelswapPickModelBtn.addEventListener("click", (e) => {
+      if (state.create.mode === "模特换场景" || modelswapPickModelBtn.hasAttribute("hidden")) {
+        e.preventDefault();
+        return;
+      }
+      openMainSubPicker("model");
+    });
+  }
+  if (modelswapPickSceneBtn) {
+    modelswapPickSceneBtn.addEventListener("click", () => openMainSubPicker("scene"));
+  }
+  if (modelswapRulesBtn) {
+    modelswapRulesBtn.addEventListener("click", () => {
+      state.create.uploadRulesExpanded = !state.create.uploadRulesExpanded;
+      saveState();
+      renderCreate();
+    });
+  }
   if (modelswapAiBtn) {
     modelswapAiBtn.addEventListener("click", () => {
       if (!state.create.uploaded) {
-        showToast("请先上传试穿图");
+        showToast(state.create.mode === "模特换场景" ? "请先上传模特图" : "请先上传试穿图");
         return;
       }
       state.create.prompt = AI_ANALYSIS_PROMPT;
@@ -1672,19 +2653,55 @@
         showToast("请先上传原图");
         return;
       }
-      const cap = state.create.mode === "真人换模特" ? 10 : 3;
+      const cap = maxUploadSlots();
       const sourceImages = (state.create.sourceImages && state.create.sourceImages.length
         ? state.create.sourceImages
         : [state.create.sourceImage || "./images/上衣原图.webp"]
       ).slice(0, cap);
       const resultItems = [];
-      if (state.create.mode === "真人换模特") {
-        const out = Math.min(4, Math.max(1, sourceImages.length));
+      if (isPortraitStudioMode()) {
+        const want = Math.min(4, Math.max(1, Number(state.create.outputCount) || 4));
+        const out = want;
+        const typeLabel = state.create.mode === "模特换场景" ? "模特换场景" : "真人换模特";
+        const typeKey = state.create.mode === "模特换场景" ? "scene_change" : "modelswap";
         for (let i = 0; i < out; i += 1) {
           resultItems.push({
-            id: "modelswap_" + i + "_" + Date.now(),
-            typeKey: "modelswap",
-            typeLabel: "真人换模特",
+            id: typeKey + "_" + i + "_" + Date.now(),
+            typeKey: typeKey,
+            typeLabel: typeLabel,
+            src: sourceImages[i % sourceImages.length],
+            progress: Math.floor(Math.random() * 12) + 3,
+            status: "generating",
+          });
+        }
+      } else if (isAiWearMode()) {
+        const want = Math.min(4, Math.max(1, Number(state.create.outputCount) || 4));
+        for (let i = 0; i < want; i += 1) {
+          resultItems.push({
+            id: "ai_wear_" + i + "_" + Date.now(),
+            typeKey: "ai_wear",
+            typeLabel: "AI穿衣",
+            src: sourceImages[i % sourceImages.length],
+            progress: Math.floor(Math.random() * 12) + 3,
+            status: "generating",
+          });
+        }
+      } else if (isAiVideoMode()) {
+        resultItems.push({
+          id: "ai_video_" + Date.now(),
+          typeKey: "ai_video",
+          typeLabel: "AI视频",
+          src: sourceImages[0] || "./images/上衣原图.webp",
+          progress: Math.floor(Math.random() * 12) + 3,
+          status: "generating",
+        });
+      } else if (isPoseFissionMode()) {
+        const want = Math.min(4, Math.max(1, Number(state.create.outputCount) || 4));
+        for (let i = 0; i < want; i += 1) {
+          resultItems.push({
+            id: "pose_fission_" + i + "_" + Date.now(),
+            typeKey: "pose_fission",
+            typeLabel: "姿势裂变",
             src: sourceImages[i % sourceImages.length],
             progress: Math.floor(Math.random() * 12) + 3,
             status: "generating",
@@ -1706,7 +2723,7 @@
         });
       }
       if (!resultItems.length) {
-        showToast("请先勾选主副图类型并设置张数");
+        showToast(isAiVideoMode() ? "请先上传图片" : "请先勾选主副图类型并设置张数");
         return;
       }
       hasStartedGeneration = true;
@@ -1835,8 +2852,31 @@
   // Profile tab
   const editProfileBtn = $("#editProfileBtn");
   const openVipBtn = $("#openVipBtn");
-  const logoutBtn = $("#logoutBtn");
   const menuList = $(".menu-list");
+  const menuAssetsSubpanel = $("#menuAssetsSubpanel");
+  const settingsPage = $("#settingsPage");
+  const settingsBackBtn = $("#settingsBackBtn");
+  const settingsPageBody = $(".settings-page-body");
+  const accountPage = $("#accountPage");
+  const accountBackBtn = $("#accountBackBtn");
+  const accountSwitchBtn = $("#accountSwitchBtn");
+  const accountLogoutBtn = $("#accountLogoutBtn");
+  const accountSubpagePowerRecords = $("#powerRecordsPage");
+  const accountSubpageOrders = $("#ordersPage");
+  const brandPage = $("#brandPage");
+  const brandBackBtn = $("#brandBackBtn");
+  const brandCategories = $("#brandCategories");
+  const brandAssetGrid = $("#brandAssetGrid");
+  const brandUploadBtn = $("#brandUploadBtn");
+  const brandSelectAllBtn = $("#brandSelectAllBtn");
+  const brandDeleteBtn = $("#brandDeleteBtn");
+  const brandUploadInput = $("#brandUploadInput");
+  const powerRecordsBackBtn = $("#powerRecordsBackBtn");
+  const ordersBackBtn = $("#ordersBackBtn");
+  const powerRecordsList = $("#powerRecordsList");
+  const powerRecordsSummary = $("#powerRecordsSummary");
+  const ordersList = $("#ordersList");
+  const ordersSummary = $("#ordersSummary");
   const vipModalMask = $("#vipModalMask");
   const vipModal = $("#vipModal");
   const vipModalCloseBtn = $("#vipModalCloseBtn");
@@ -1845,7 +2885,32 @@
   const vipYearBtn = $("#vipYearBtn");
   const vipAgreeChk = $("#vipAgreeChk");
   const vipBuyBtn = $("#vipBuyBtn");
+  const vipPayMethodMask = $("#vipPayMethodMask");
+  const vipPayMethodModal = $("#vipPayMethodModal");
+  const vipPayMethodCloseBtn = $("#vipPayMethodCloseBtn");
+  const vipPayMethodConfirmBtn = $("#vipPayMethodConfirmBtn");
+  const vipPayMethodChangeBtn = $("#vipPayMethodChangeBtn");
+  const vipPayMethodAmount = $("#vipPayMethodAmount");
+  const vipPayMethodAmountSub = $("#vipPayMethodAmountSub");
+  const vipPayMethodLabel = $("#vipPayMethodLabel");
+  const vipPayIcoAlipay = $("#vipPayIcoAlipay");
+  const vipPayIcoWechat = $("#vipPayIcoWechat");
   let vipSelectedPlan = 0;
+  let vipPayMethod = "alipay";
+  let powerRecordsReturnToAccount = false;
+  let ordersReturnToAccount = false;
+  let activeBrandCategoryKey = "all";
+  const brandCategoryDefs = [
+    { key: "all", label: "全部" },
+    { key: "fashion_set", label: "穿衣素材/服装套图" },
+    { key: "product_set", label: "商品图" },
+    { key: "real_model", label: "真人换模特" },
+    { key: "model_scene", label: "模特换场景" },
+    { key: "ai_wear", label: "AI穿衣" },
+    { key: "pose", label: "姿势裂变" },
+    { key: "style_copy", label: "人台换模特" },
+  ];
+  const brandSelectedIds = new Set();
   const vipFreeFeatures = [
     "作图优先级:低",
     "AI 生图同时发起1个任务",
@@ -1934,6 +2999,343 @@
   };
   let vipCycle = "month";
 
+  function parseVipPriceToYen(priceText) {
+    const t = String(priceText || "");
+    const m = t.match(/([0-9]+(\.[0-9]+)?)/);
+    if (!m) return 0;
+    const v = Number(m[1]);
+    return Number.isFinite(v) ? v : 0;
+  }
+
+  function getVipCurrentSelectedPlan() {
+    const current = vipPlans[vipCycle] || [];
+    return current[vipSelectedPlan] || null;
+  }
+
+  function syncVipPayMethodDisplay() {
+    const labelText = vipPayMethod === "wechat" ? "使用微信支付" : "使用支付宝支付";
+    if (vipPayMethodLabel) vipPayMethodLabel.textContent = labelText;
+    if (vipPayIcoAlipay) vipPayIcoAlipay.style.display = vipPayMethod === "wechat" ? "none" : "block";
+    if (vipPayIcoWechat) vipPayIcoWechat.style.display = vipPayMethod === "wechat" ? "grid" : "none";
+  }
+
+  function syncVipPayMethodModalAmount() {
+    if (!vipPayMethodAmount || !vipPayMethodAmountSub) return;
+    const sel = getVipCurrentSelectedPlan();
+    const price = sel ? parseVipPriceToYen(sel.price) : 0;
+    const yen = "¥" + price.toFixed(2);
+    vipPayMethodAmount.textContent = yen;
+    vipPayMethodAmountSub.textContent = vipCycle === "year" ? "连续包年" : "连续包月";
+  }
+
+  function openVipPayMethodModal() {
+    if (!vipPayMethodMask || !vipPayMethodModal) return;
+    syncVipPayMethodDisplay();
+    syncVipPayMethodModalAmount();
+    if (typeof syncVipPayMethodChoicesActive === "function") syncVipPayMethodChoicesActive();
+    vipPayMethodMask.classList.add("show");
+    vipPayMethodModal.classList.add("show");
+    vipPayMethodMask.setAttribute("aria-hidden", "false");
+    vipPayMethodModal.setAttribute("aria-hidden", "false");
+  }
+
+  function closeVipPayMethodModal() {
+    if (!vipPayMethodMask || !vipPayMethodModal) return;
+    vipPayMethodMask.classList.remove("show");
+    vipPayMethodModal.classList.remove("show");
+    vipPayMethodMask.setAttribute("aria-hidden", "true");
+    vipPayMethodModal.setAttribute("aria-hidden", "true");
+  }
+
+  function openSettingsPage() {
+    if (!settingsPage) return;
+    settingsPage.classList.add("show");
+    settingsPage.setAttribute("aria-hidden", "false");
+  }
+
+  function closeSettingsPage() {
+    if (!settingsPage) return;
+    settingsPage.classList.remove("show");
+    settingsPage.setAttribute("aria-hidden", "true");
+  }
+
+  function openAccountPage() {
+    if (!accountPage) return;
+    closePowerRecordsPage();
+    closeOrdersPage();
+    accountPage.classList.add("show");
+    accountPage.setAttribute("aria-hidden", "false");
+  }
+
+  function closeAccountPage() {
+    if (!accountPage) return;
+    accountPage.classList.remove("show");
+    accountPage.setAttribute("aria-hidden", "true");
+    closePowerRecordsPage();
+    closeOrdersPage();
+  }
+
+  function closePowerRecordsPage() {
+    if (!accountSubpagePowerRecords) return;
+    accountSubpagePowerRecords.classList.remove("show");
+    accountSubpagePowerRecords.setAttribute("aria-hidden", "true");
+  }
+
+  function closeOrdersPage() {
+    if (!accountSubpageOrders) return;
+    accountSubpageOrders.classList.remove("show");
+    accountSubpageOrders.setAttribute("aria-hidden", "true");
+  }
+
+  function renderPowerRecords() {
+    if (!powerRecordsList || !powerRecordsSummary) return;
+    const remainingNow = getRemainingPower();
+    powerRecordsSummary.textContent = `当前剩余：${remainingNow}点`;
+
+    const records = [
+      { date: "2026-03-25", title: "AI视频（图生视频）", consume: 400, desc: "720P / 10秒" },
+      { date: "2026-03-20", title: "姿势裂变", consume: 240, desc: "4张 / 高级模型" },
+      { date: "2026-03-12", title: "服装套图", consume: 180, desc: "2张 / 4K 超清" },
+      { date: "2026-03-05", title: "模特换场景", consume: 600, desc: "场景重构" },
+    ];
+
+    // records 按从新到旧渲染，remainingNow 表示当前余额（最新一条之后的余额）
+    let remaining = remainingNow;
+    const rows = records
+      .map((r) => {
+        const remainingAfter = remaining;
+        remaining += r.consume;
+        return `
+          <div class="account-sub-record-item">
+            <div>
+              <div class="account-sub-record-title">${escapeHtml(r.title)}</div>
+              <div class="account-sub-record-date">${escapeHtml(r.date)} · ${escapeHtml(r.desc)}</div>
+            </div>
+            <div class="account-sub-record-right">
+              <div class="account-sub-record-consume">消耗 ${r.consume}点</div>
+              <div class="account-sub-record-remain">剩余 ${remainingAfter}点</div>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+    powerRecordsList.innerHTML = rows;
+  }
+
+  function renderOrders() {
+    if (!ordersList || !ordersSummary) return;
+    const demoOrders = [
+      { id: "ORD-20260320-001", plan: "绘鸟AI VIP 月会员", price: "59.00", time: "2026-03-20", status: "支付成功" },
+      { id: "ORD-20260220-012", plan: "绘鸟AI VIP 月会员", price: "59.00", time: "2026-02-20", status: "支付成功" },
+      { id: "ORD-20260120-008", plan: "绘鸟AI VIP 年会员", price: "659.00", time: "2026-01-20", status: "支付成功" },
+    ];
+
+    ordersSummary.textContent = `订单数量：${demoOrders.length} · 订单中心`;
+    const rows = demoOrders
+      .map((o) => {
+        const paid = String(o.status || "").includes("成功");
+        return `
+          <div class="account-sub-order-item">
+            <div>
+              <div class="account-sub-order-plan">${escapeHtml(o.plan)}</div>
+              <div class="account-sub-order-meta">订单号：${escapeHtml(o.id)} · ${escapeHtml(o.time)}</div>
+            </div>
+            <div class="account-sub-order-right">
+              <div class="account-sub-order-price">¥${escapeHtml(o.price)}</div>
+              <div class="account-sub-order-status ${paid ? "is-paid" : ""}">${escapeHtml(o.status)}</div>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+    ordersList.innerHTML = rows;
+  }
+
+  function openPowerRecordsPage() {
+    if (!accountSubpagePowerRecords) return;
+    closeBrandPage && closeBrandPage();
+    powerRecordsReturnToAccount = !!(accountPage && accountPage.classList.contains("show"));
+    closeOrdersPage();
+    accountSubpagePowerRecords.classList.add("show");
+    accountSubpagePowerRecords.setAttribute("aria-hidden", "false");
+    accountPage && accountPage.classList.remove("show");
+    accountPage && accountPage.setAttribute("aria-hidden", "true");
+    renderPowerRecords();
+  }
+
+  function openOrdersPage() {
+    if (!accountSubpageOrders) return;
+    closeBrandPage && closeBrandPage();
+    ordersReturnToAccount = !!(accountPage && accountPage.classList.contains("show"));
+    closePowerRecordsPage();
+    accountSubpageOrders.classList.add("show");
+    accountSubpageOrders.setAttribute("aria-hidden", "false");
+    accountPage && accountPage.classList.remove("show");
+    accountPage && accountPage.setAttribute("aria-hidden", "true");
+    renderOrders();
+  }
+
+  function guessBrandCategoryKeyByCreateMode(modeName) {
+    switch (modeName) {
+      case "服装套图":
+        return "fashion_set";
+      case "真人换模特":
+        return "real_model";
+      case "模特换场景":
+        return "model_scene";
+      case "AI穿衣":
+        return "ai_wear";
+      case "姿势裂变":
+        return "pose";
+      case "商品套图":
+        return "product_set";
+      case "风格复刻":
+      case "人台换模特":
+        return "style_copy";
+      default:
+        return "all";
+    }
+  }
+
+  function getBrandAssets() {
+    if (!state.user) return [];
+    if (!Array.isArray(state.user.brandAssets)) state.user.brandAssets = [];
+    return state.user.brandAssets;
+  }
+
+  function getFilteredBrandAssets() {
+    const list = getBrandAssets();
+    if (activeBrandCategoryKey === "all") return list;
+    return list.filter((a) => (a && a.categoryKey ? a.categoryKey : "all") === activeBrandCategoryKey);
+  }
+
+  function renderBrandCategories() {
+    if (!brandCategories) return;
+    brandCategories.innerHTML = brandCategoryDefs
+      .map(
+        (c) =>
+          `<button class="chip ${c.key === activeBrandCategoryKey ? "active" : ""}" type="button" data-brand-cat-key="${escapeHtml(
+            c.key
+          )}">${escapeHtml(c.label)}</button>`
+      )
+      .join("");
+  }
+
+  function renderBrandAssets() {
+    if (!brandAssetGrid) return;
+    const list = getFilteredBrandAssets();
+    brandAssetGrid.innerHTML = list
+      .map((a) => {
+        const id = String(a.id || "");
+        const src = a.src ? String(a.src) : "";
+        const selected = brandSelectedIds.has(id);
+        return `
+          <article class="m-card brand-m-card ${selected ? "is-selected" : ""}" data-brand-asset-id="${escapeHtml(id)}">
+            <div class="m-thumb brand-m-thumb">
+              <img class="m-img" src="${escapeHtml(src)}" alt="品牌素材" />
+              <label class="brand-asset-check" aria-label="选择图片">
+                <input type="checkbox" data-asset-id="${escapeHtml(id)}" ${selected ? "checked" : ""} />
+              </label>
+            </div>
+          </article>
+        `;
+      })
+      .join("");
+  }
+
+  function closeBrandPage() {
+    if (!brandPage) return;
+    brandPage.classList.remove("show");
+    brandPage.setAttribute("aria-hidden", "true");
+    brandSelectedIds.clear();
+    activeBrandCategoryKey = "all";
+  }
+
+  function openBrandPage() {
+    if (!brandPage) return;
+    // 打开我的品牌时，关闭其他叠层页
+    closeSettingsPage && closeSettingsPage();
+    closeAccountPage && closeAccountPage();
+    closePowerRecordsPage && closePowerRecordsPage();
+    closeOrdersPage && closeOrdersPage();
+
+    brandSelectedIds.clear();
+    brandPage.classList.add("show");
+    brandPage.setAttribute("aria-hidden", "false");
+    renderBrandCategories();
+    renderBrandAssets();
+  }
+
+  async function addBrandAssetsFromFiles(files) {
+    if (!Array.isArray(files) || files.length === 0) return;
+
+    const maxFiles = 24;
+    const picked = files.slice(0, maxFiles);
+
+    const readAsDataUrl = (file) =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+    const existingSrcSet = new Set(getBrandAssets().map((a) => String(a && a.src ? a.src : "")));
+    const now = Date.now();
+    const results = await Promise.all(
+      picked.map(async (f, idx) => {
+        const dataUrl = await readAsDataUrl(f);
+        return { dataUrl, idx, name: f && f.name };
+      })
+    );
+
+    results.forEach((r) => {
+      const src = r && r.dataUrl ? String(r.dataUrl) : "";
+      if (!src) return;
+      if (existingSrcSet.has(src)) return;
+      getBrandAssets().push({
+        id: "u_" + now + "_" + r.idx + "_" + Math.random().toString(16).slice(2),
+        src,
+        categoryKey: activeBrandCategoryKey === "all" ? "all" : activeBrandCategoryKey,
+        createdAt: now,
+        from: "upload",
+      });
+      existingSrcSet.add(src);
+    });
+
+    brandSelectedIds.clear();
+    saveState();
+    renderBrandAssets();
+  }
+
+  function addGeneratedResultsToBrandAssets() {
+    if (!generatedResults || !Array.isArray(generatedResults)) return;
+    if (!state.user) return;
+    if (!Array.isArray(state.user.brandAssets)) state.user.brandAssets = [];
+
+    const activeKey = guessBrandCategoryKeyByCreateMode(state.create.mode);
+    const list = state.user.brandAssets;
+    const existingKeySet = new Set(list.map((a) => String(a && a.src ? a.src : "")));
+
+    const now = Date.now();
+    generatedResults
+      .filter((it) => it && it.status === "done" && it.src)
+      .forEach((it) => {
+        const src = String(it.src || "");
+        if (!src) return;
+        if (existingKeySet.has(src)) return;
+        list.push({
+          id: "g_" + now + "_" + Math.random().toString(16).slice(2),
+          src,
+          categoryKey: activeKey === "all" ? "all" : activeKey,
+          createdAt: now,
+          from: "generated",
+        });
+        existingKeySet.add(src);
+      });
+  }
+
   function renderVipPlans() {
     if (!vipPlanRow) return;
     const current = vipPlans[vipCycle] || [];
@@ -1974,6 +3376,7 @@
     if (!vipModalMask || !vipModal) return;
     vipCycle = "month";
     vipSelectedPlan = 0;
+    vipPayMethod = "alipay";
     if (vipMonthBtn) {
       vipMonthBtn.classList.add("active");
       vipMonthBtn.setAttribute("aria-selected", "true");
@@ -2063,10 +3466,7 @@
         openLoginSheet();
         return;
       }
-      state.user.name = state.user.name === "演示用户" ? "电商创作者" : "演示用户";
-      saveState();
-      renderProfile();
-      showToast("资料已更新");
+      // 已登录时该位置只展示“剩余算力”，不再进入编辑/修改逻辑
     });
   }
   if (loginMask) loginMask.addEventListener("click", closeLoginSheet);
@@ -2140,31 +3540,143 @@
       renderVipPlans();
     });
   }
-  if (vipBuyBtn) {
-    vipBuyBtn.addEventListener("click", () => {
-      const current = vipPlans[vipCycle] || [];
-      const sel = current[vipSelectedPlan];
-      if (sel && sel.tier === "free") {
-        showToast("请选择会员套餐");
-        return;
-      }
-      if (vipAgreeChk && !vipAgreeChk.checked) {
-        showToast("请先同意会员协议");
-        return;
-      }
-      state.user.vip = true;
-      saveState();
-      renderProfile();
-      closeVipModal();
-      showToast("会员开通成功");
+
+  function doVipBuy() {
+    const current = vipPlans[vipCycle] || [];
+    const sel = current[vipSelectedPlan];
+    if (sel && sel.tier === "free") {
+      showToast("请选择会员套餐");
+      return;
+    }
+    if (vipAgreeChk && !vipAgreeChk.checked) {
+      showToast("请先同意会员协议");
+      return;
+    }
+    state.user.vip = true;
+    saveState();
+    renderProfile();
+    closeVipModal();
+    showToast("会员开通成功");
+  }
+
+  if (vipPayMethodChangeBtn) {
+    vipPayMethodChangeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openVipPayMethodModal();
     });
   }
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", () => {
-      state.user = { ...defaultState.user };
+  if (vipPayMethodCloseBtn) {
+    vipPayMethodCloseBtn.addEventListener("click", () => {
+      closeVipPayMethodModal();
+    });
+  }
+  if (vipPayMethodMask) {
+    vipPayMethodMask.addEventListener("click", () => closeVipPayMethodModal());
+  }
+
+  function syncVipPayMethodChoicesActive() {
+    if (!vipPayMethodModal) return;
+    const choices = Array.from(vipPayMethodModal.querySelectorAll(".vip-pay-choice"));
+    choices.forEach((btn) => {
+      const k = btn.getAttribute("data-pay-method") || "";
+      btn.classList.toggle("active", k === vipPayMethod);
+    });
+  }
+
+  if (vipPayMethodModal) {
+    vipPayMethodModal.addEventListener("click", (e) => {
+      const btn = e.target.closest(".vip-pay-choice[data-pay-method]");
+      if (!btn) return;
+      const method = btn.getAttribute("data-pay-method") || "alipay";
+      vipPayMethod = method === "wechat" ? "wechat" : "alipay";
+      syncVipPayMethodDisplay();
+      syncVipPayMethodChoicesActive();
+      syncVipPayMethodModalAmount();
+    });
+  }
+
+  if (vipPayMethodConfirmBtn) {
+    vipPayMethodConfirmBtn.addEventListener("click", () => {
+      closeVipPayMethodModal();
+      doVipBuy();
+    });
+  }
+  if (vipBuyBtn) {
+    vipBuyBtn.addEventListener("click", doVipBuy);
+  }
+
+  // Brand page events
+  if (brandBackBtn) {
+    brandBackBtn.addEventListener("click", () => closeBrandPage());
+  }
+  if (brandCategories) {
+    // 让分类条支持鼠标按住拖拽横向滚动（体验与案例页一致）
+    enableMouseDragScroll(brandCategories);
+    brandCategories.addEventListener("click", (e) => {
+      const btn = e.target.closest(".chip[data-brand-cat-key]");
+      if (!btn) return;
+      activeBrandCategoryKey = btn.getAttribute("data-brand-cat-key") || "all";
+      brandSelectedIds.clear();
+      renderBrandCategories();
+      renderBrandAssets();
+    });
+  }
+  if (brandAssetGrid) {
+    brandAssetGrid.addEventListener("click", (e) => {
+      const card = e.target.closest(".brand-m-card[data-brand-asset-id]");
+      if (!card) return;
+      const id = card.getAttribute("data-brand-asset-id") || "";
+      if (!id) return;
+      if (brandSelectedIds.has(id)) brandSelectedIds.delete(id);
+      else brandSelectedIds.add(id);
+      renderBrandAssets();
+    });
+  }
+  if (brandUploadBtn) {
+    brandUploadBtn.addEventListener("click", () => {
+      brandUploadInput && brandUploadInput.click();
+    });
+  }
+  if (brandUploadInput) {
+    brandUploadInput.addEventListener("change", async () => {
+      const files = brandUploadInput.files ? Array.from(brandUploadInput.files) : [];
+      try {
+        await addBrandAssetsFromFiles(files);
+      } finally {
+        // 允许再次选择同一文件
+        brandUploadInput.value = "";
+      }
+    });
+  }
+  if (brandSelectAllBtn) {
+    brandSelectAllBtn.addEventListener("click", () => {
+      const list = getFilteredBrandAssets();
+      if (list.length === 0) return;
+      const allSelected = list.every((a) => brandSelectedIds.has(String(a && a.id ? a.id : "")));
+      if (allSelected) {
+        brandSelectedIds.clear();
+      } else {
+        list.forEach((a) => {
+          const id = String(a && a.id ? a.id : "");
+          if (id) brandSelectedIds.add(id);
+        });
+      }
+      renderBrandAssets();
+    });
+  }
+  if (brandDeleteBtn) {
+    brandDeleteBtn.addEventListener("click", () => {
+      if (brandSelectedIds.size === 0) {
+        showToast("请先选择要删除的图片");
+        return;
+      }
+      const ids = new Set(Array.from(brandSelectedIds));
+      state.user.brandAssets = getBrandAssets().filter((a) => !ids.has(String(a && a.id ? a.id : "")));
+      brandSelectedIds.clear();
       saveState();
-      renderProfile();
-      showToast("已退出登录");
+      renderBrandAssets();
+      renderBrandCategories();
+      showToast("删除成功");
     });
   }
   if (menuList) {
@@ -2175,7 +3687,102 @@
         openLoginSheet();
         return;
       }
-      showToast("打开：" + (item.getAttribute("data-menu") || ""));
+      const menuKey = item.getAttribute("data-menu") || "";
+      if (menuKey === "brand") {
+        openBrandPage();
+        return;
+      }
+      if (menuKey === "powerRecords") {
+        openPowerRecordsPage();
+        return;
+      }
+      if (menuKey === "orders") {
+        openOrdersPage();
+        return;
+      }
+      showToast("打开：" + menuKey);
+    });
+  }
+  if (menuAssetsSubpanel) {
+    menuAssetsSubpanel.addEventListener("click", (e) => {
+      const btn = e.target.closest(".assets-subcard[data-open-subpage]");
+      if (!btn) return;
+      const key = btn.getAttribute("data-open-subpage") || "";
+      if (key === "powerRecords") return openPowerRecordsPage();
+      if (key === "orders") return openOrdersPage();
+    });
+  }
+  if (settingsBackBtn) {
+    settingsBackBtn.addEventListener("click", () => {
+      if (accountPage && accountPage.classList.contains("show")) {
+        closeAccountPage();
+        return;
+      }
+      closeSettingsPage();
+    });
+  }
+  if (settingsPageBody) {
+    settingsPageBody.addEventListener("click", (e) => {
+      const btn = e.target.closest(".settings-item");
+      if (!btn) return;
+      const key = btn.getAttribute("data-settings-key") || "";
+      if (key === "account") {
+        openAccountPage();
+        return;
+      }
+      const textEl = btn.querySelector("span");
+      const name = (textEl && textEl.textContent) || "设置项";
+      showToast("打开：" + name);
+    });
+  }
+
+  if (accountSubpagePowerRecords && powerRecordsBackBtn) {
+    powerRecordsBackBtn.addEventListener("click", () => {
+      closePowerRecordsPage();
+      if (powerRecordsReturnToAccount) openAccountPage();
+    });
+  }
+  if (accountSubpageOrders && ordersBackBtn) {
+    ordersBackBtn.addEventListener("click", () => {
+      closeOrdersPage();
+      if (ordersReturnToAccount) openAccountPage();
+    });
+  }
+
+  const accountPageBody = $("#accountPage .account-page-body");
+  if (accountPageBody) {
+    accountPageBody.addEventListener("click", (e) => {
+      const item = e.target.closest(".account-item[data-account-subpage]");
+      if (!item) return;
+      const key = item.getAttribute("data-account-subpage") || "";
+      if (key === "powerRecords") {
+        openPowerRecordsPage();
+        return;
+      }
+      if (key === "orders") {
+        openOrdersPage();
+        return;
+      }
+    });
+  }
+  if (accountBackBtn) {
+    accountBackBtn.addEventListener("click", () => {
+      closeAccountPage();
+    });
+  }
+  if (accountSwitchBtn) {
+    accountSwitchBtn.addEventListener("click", () => {
+      openLoginSheet();
+    });
+  }
+  if (accountLogoutBtn) {
+    accountLogoutBtn.addEventListener("click", () => {
+      state.user = { ...defaultState.user };
+      closeAccountPage();
+      closeSettingsPage();
+      saveState();
+      renderProfile();
+      showToast("已退出登录");
     });
   }
 
