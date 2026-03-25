@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>绘鸟AI - 专业电商AI作图工具</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="./assets/app.css" />
   </head>
   <body>
@@ -16,19 +22,22 @@
       <section class="scroll" id="scroll">
         <header class="header">
           <div class="title-row">
-            <div class="brand">
-              <img
-                class="brand-logo"
-                src="./images/logo.png"
-                alt="绘鸟AI Logo"
-                onerror="this.style.display='none';this.nextElementSibling.style.display='grid';"
-              />
-              <span class="brand-logo-fallback" aria-hidden="true" style="display:none;">鸟</span>
-              绘鸟<span>AI</span>
+            <div class="title-left">
+              <button class="search-toggle" type="button" id="searchToggleBtn" aria-label="打开搜索">🔍</button>
+              <div class="brand">
+                <img
+                  class="brand-logo"
+                  src="./images/logo.png"
+                  alt="绘鸟AI Logo"
+                  onerror="this.style.display='none';this.nextElementSibling.style.display='grid';"
+                />
+                <span class="brand-logo-fallback" aria-hidden="true" style="display:none;">鸟</span>
+                绘鸟<span>AI</span>
+              </div>
             </div>
             <button class="avatar" type="button" aria-label="打开个人中心" id="profileBtn">我</button>
           </div>
-          <input id="searchInput" class="search" placeholder="搜索模板、场景、关键词..." />
+          <input id="searchInput" class="search is-collapsed" placeholder="搜索模板、场景、关键词..." />
         </header>
 
         <!-- Home -->
@@ -51,7 +60,7 @@
           <div class="section">
             <div class="title">
               <h3>智能工具</h3>
-              <span class="hint">拖一点就能出图</span>
+              <span class="hint">一拖一点就能出图</span>
             </div>
             <div class="tool-grid mt-tool-grid" id="featureGrid">
               <div class="tool-page">
@@ -155,22 +164,18 @@
           <div class="section section-hot">
             <div class="title">
               <h3>热门案例</h3>
-              <a class="link" href="javascript:void(0)">换一批</a>
             </div>
             <div class="hot-scroll">
               <article class="hot-card" data-hot-kind="尺码图" data-hot-mode="product">
                 <div class="hot-thumb">
-                  <img class="hot-img" src="./images/尺码图_1580.jpg" alt="尺码图_1580" />
-                  <div class="hot-product-tag" aria-label="商品">
-                    <img
-                      class="hot-product-icon"
-                      src="./images/上衣原图.webp"
-                      alt="上衣原图"
-                    />
-                    <span>商品</span>
+                  <div class="hot-compare-col">
+                    <div class="hot-compare-half">
+                      <img class="hot-img hot-img-before" src="./images/上衣原图.webp" alt="生成前" />
+                    </div>
+                    <div class="hot-compare-half">
+                      <img class="hot-img hot-img-after" src="./images/尺码图_1580.jpg" alt="尺码图_1580" />
+                    </div>
                   </div>
-                  <div class="hot-rank-badge no-1">NO.1</div>
-
                   <div class="hot-hover-overlay">
                     <div class="hot-hover-actions">
                       <button class="hot-act-btn hot-preview-btn" type="button" data-action="preview" aria-label="预览">
@@ -185,17 +190,14 @@
 
               <article class="hot-card" data-hot-kind="卖点图" data-hot-mode="product">
                 <div class="hot-thumb">
-                  <img class="hot-img" src="./images/卖点图_1579.jpg" alt="卖点图_1579" />
-                  <div class="hot-product-tag" aria-label="商品">
-                    <img
-                      class="hot-product-icon"
-                      src="./images/上衣原图.webp"
-                      alt="上衣原图"
-                    />
-                    <span>商品</span>
+                  <div class="hot-compare-col">
+                    <div class="hot-compare-half">
+                      <img class="hot-img hot-img-before" src="./images/上衣原图.webp" alt="生成前" />
+                    </div>
+                    <div class="hot-compare-half">
+                      <img class="hot-img hot-img-after" src="./images/卖点图_1579.jpg" alt="卖点图_1579" />
+                    </div>
                   </div>
-                  <div class="hot-rank-badge no-2">NO.2</div>
-
                   <div class="hot-hover-overlay">
                     <div class="hot-hover-actions">
                       <button class="hot-act-btn hot-preview-btn" type="button" data-action="preview" aria-label="预览">
@@ -210,17 +212,14 @@
 
               <article class="hot-card" data-hot-kind="模特图" data-hot-mode="fitting">
                 <div class="hot-thumb">
-                  <img class="hot-img" src="./images/模特图_1577.jpg" alt="模特图_1577" />
-                  <div class="hot-product-tag" aria-label="商品">
-                    <img
-                      class="hot-product-icon"
-                      src="./images/上衣原图.webp"
-                      alt="上衣原图"
-                    />
-                    <span>商品</span>
+                  <div class="hot-compare-col">
+                    <div class="hot-compare-half">
+                      <img class="hot-img hot-img-before" src="./images/上衣原图.webp" alt="生成前" />
+                    </div>
+                    <div class="hot-compare-half">
+                      <img class="hot-img hot-img-after" src="./images/模特图_1577.jpg" alt="模特图_1577" />
+                    </div>
                   </div>
-                  <div class="hot-rank-badge no-3">NO.3</div>
-
                   <div class="hot-hover-overlay">
                     <div class="hot-hover-actions">
                       <button class="hot-act-btn hot-preview-btn" type="button" data-action="preview" aria-label="预览">
@@ -235,17 +234,14 @@
 
               <article class="hot-card" data-hot-kind="种草图" data-hot-mode="pose">
                 <div class="hot-thumb">
-                  <img class="hot-img" src="./images/种草图_1578.jpg" alt="种草图_1578" />
-                  <div class="hot-product-tag" aria-label="商品">
-                    <img
-                      class="hot-product-icon"
-                      src="./images/上衣原图.webp"
-                      alt="上衣原图"
-                    />
-                    <span>商品</span>
+                  <div class="hot-compare-col">
+                    <div class="hot-compare-half">
+                      <img class="hot-img hot-img-before" src="./images/上衣原图.webp" alt="生成前" />
+                    </div>
+                    <div class="hot-compare-half">
+                      <img class="hot-img hot-img-after" src="./images/种草图_1578.jpg" alt="种草图_1578" />
+                    </div>
                   </div>
-                  <div class="hot-rank-badge no-4">NO.4</div>
-
                   <div class="hot-hover-overlay">
                     <div class="hot-hover-actions">
                       <button class="hot-act-btn hot-preview-btn" type="button" data-action="preview" aria-label="预览">
@@ -388,6 +384,7 @@
             </div>
             <div class="create-web-layout">
               <div class="create-left">
+                <div class="create-workbench create-workbench--fashion" id="createWorkbenchFashion">
                 <div class="create-panel">
                   <div class="create-panel-title">多角度服装图&搭配图</div>
                   <div class="create-upload-actions">
@@ -398,7 +395,6 @@
                   <div class="upload-box" id="uploadBox">
                     <button class="upload-icon" id="uploadPlusBtn" type="button" aria-label="从本地选择图片">+</button>
                     <div class="upload-title">上传原图</div>
-                    <input class="upload-input" id="localImageInput" type="file" accept="image/*" multiple />
                   </div>
                   <div class="upload-preview-list" id="uploadPreviewList"></div>
                 </div>
@@ -527,6 +523,62 @@
                     </div>
                   </div>
                 </div>
+                </div>
+                <input class="upload-input" id="localImageInput" type="file" accept="image/*" multiple />
+                <div class="create-workbench create-workbench--modelswap" id="createWorkbenchModelSwap" hidden>
+                  <div class="create-panel modelswap-panel">
+                    <div class="create-panel-title">真人换模特</div>
+                    <div class="modelswap-dropzone" id="modelswapDropzone" tabindex="0" role="button" aria-label="上传真人试穿图">
+                      <div class="modelswap-dropzone-inner" id="modelswapDropzoneInner">
+                        <span class="modelswap-drop-ico" aria-hidden="true"></span>
+                        <p class="modelswap-drop-text">拖拽或点击上传真人试穿图</p>
+                      </div>
+                    </div>
+                    <div class="create-upload-actions modelswap-upload-actions">
+                      <button class="soft-btn modelswap-local-btn" type="button" id="modelswapLocalBtn">从本地上传</button>
+                      <button class="primary-btn mini" type="button" id="modelswapBrandBtn">从品牌库选择</button>
+                    </div>
+                    <p class="modelswap-foot-hint">支持上传套图，最多10张<br />10M以内，384×384～4096×4096</p>
+                    <div class="upload-preview-list modelswap-preview-list" id="modelswapPreviewList"></div>
+                  </div>
+                  <div class="create-panel form-card modelswap-after-panel" id="modelswapAfterPanel" hidden>
+                    <div class="modelswap-interactive-tip">已选试穿图 · 点击缩略图 × 可删除，可继续添加</div>
+                    <div class="create-sub-title-row">
+                      <div class="create-sub-title">补充说明（可选）</div>
+                      <div class="create-sub-actions">
+                        <button class="create-sub-btn active" type="button" id="modelswapAiBtn">AI分析</button>
+                      </div>
+                    </div>
+                    <label class="form-item">
+                      <textarea id="modelswapPrompt" rows="3" placeholder="描述期望的模特风格、体态与场景等"></textarea>
+                    </label>
+                    <label class="form-item">
+                      <span>生成比例</span>
+                      <select id="modelswapSize">
+                        <option>3:4竖版</option>
+                        <option>4:3横版</option>
+                        <option>1:1方形</option>
+                        <option>9:16竖版</option>
+                        <option>16:9横版</option>
+                      </select>
+                    </label>
+                    <label class="form-item">
+                      <span>清晰度</span>
+                      <select id="modelswapClarity">
+                        <option>4K 超清</option>
+                        <option>2K 高清</option>
+                        <option>1K 标清</option>
+                      </select>
+                    </label>
+                    <label class="form-item">
+                      <span>模型</span>
+                      <select id="modelswapModelLevel">
+                        <option>高级模型</option>
+                        <option>基础模型</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
                 <div class="create-power-hint" id="createPowerHint">主副图0张 * 每张0点 = 0点</div>
                 <div class="action-row action-row-single">
                   <button class="primary-btn" id="previewBtn" type="button">开始生成(0算力)</button>
@@ -604,6 +656,9 @@
               <h3>消息中心</h3>
               <a class="link" href="javascript:void(0)" id="markAllReadBtn">全部已读</a>
             </div>
+            <div class="msg-toolbar">
+              <button class="soft-btn msg-clear-btn" id="clearMsgBtn" type="button">清空已读消息</button>
+            </div>
             <div class="msg-list" id="msgList">
               <div class="msg-item">
                 <div class="msg-dot unread"></div>
@@ -627,7 +682,6 @@
                 </div>
               </div>
             </div>
-            <button class="wide-btn" id="clearMsgBtn" type="button">清空已读消息</button>
           </div>
         </div>
 
@@ -635,18 +689,22 @@
         <div id="page-profile" class="page" data-tab-page="profile">
           <div class="section">
             <div class="profile-card">
-              <div class="profile-avatar">演</div>
+              <div class="profile-avatar">未</div>
               <div class="profile-info">
-                <h3>演示用户</h3>
-                <p>ID: demo_user_001</p>
+                <h3>未登录</h3>
+                <p>登录后可同步任务记录和素材</p>
               </div>
-              <button class="soft-btn" id="editProfileBtn" type="button">编辑</button>
+              <button class="soft-btn" id="editProfileBtn" type="button">立即登录</button>
             </div>
           </div>
           <div class="section">
             <div class="vip-banner">
               <div class="vip-text">
-                <h4>绘鸟 AI 会员</h4>
+                <h4 class="vip-title">
+                  <span>绘鸟AI</span>
+                  <img class="vip-crown-icon" src="./images/会员.png" alt="会员" />
+                  <span>VIP</span>
+                </h4>
                 <p>解锁高清导出、批量处理、商用授权</p>
               </div>
               <button class="primary-btn mini" id="openVipBtn" type="button">立即开通</button>
@@ -699,6 +757,84 @@
             <img class="hot-preview-img" id="hotPreviewAfterImg" alt="生成后" />
           </div>
         </div>
+      </div>
+      <div class="login-mask" id="loginMask" aria-hidden="true"></div>
+      <div class="login-sheet" id="loginSheet" aria-hidden="true">
+        <div class="login-sheet-header">
+          <button class="login-back-btn" id="loginBackBtn" type="button" aria-label="返回">‹</button>
+          <h4 id="loginSheetTitle">本机号码一键登录</h4>
+          <button class="login-help-btn" id="loginCloseBtn" type="button" aria-label="关闭登录">?</button>
+        </div>
+        <div class="login-sheet-body login-main-view" id="loginOptionsView">
+          <div class="login-phone-num" id="loginPhoneNum">173****3539</div>
+          <div class="login-phone-tip">天翼数字生活账号为您提供号码认证服务</div>
+          <button class="login-primary-btn" id="quickLoginBtn" type="button">一键登录</button>
+          <button class="login-secondary-btn" id="otherPhoneLoginBtn" type="button">其他手机号登录</button>
+          <div class="login-third-row">
+            <button class="login-third-btn wx" id="wechatLoginBtn" type="button" aria-label="微信登录">微</button>
+            <button class="login-third-btn qq" type="button" aria-label="QQ登录">Q</button>
+            <button class="login-third-btn wb" type="button" aria-label="微博登录">微</button>
+            <button class="login-third-btn cert" type="button" aria-label="认证登录">证</button>
+          </div>
+          <label class="login-agreement">
+            <input type="checkbox" id="loginAgreeChk" />
+            <span>我已阅读并同意用户协议、个人信息保护政策、账号规则和天翼数字生活账号服务条款</span>
+          </label>
+        </div>
+        <div class="login-sheet-body login-wechat-view" id="wechatFollowView" style="display:none;">
+          <p>请使用微信扫码并关注公众号完成登录</p>
+          <div class="wechat-fake-qr">公众号二维码</div>
+          <button class="primary-btn" id="wechatDoneBtn" type="button">我已完成关注并登录</button>
+        </div>
+      </div>
+      <div class="vip-modal-mask" id="vipModalMask" aria-hidden="true"></div>
+      <div class="vip-modal" id="vipModal" aria-hidden="true">
+        <div class="vip-modal-head">
+          <div class="vip-modal-title" aria-label="绘鸟AI VIP">
+            <span class="vip-modal-brand">绘鸟<span class="vip-modal-brand-ai">AI</span></span>
+            <img
+              class="vip-modal-member-ico"
+              src="./images/会员.png"
+              alt=""
+              width="20"
+              height="20"
+              decoding="async"
+            />
+            <span class="vip-modal-vip" aria-hidden="true">VIP</span>
+          </div>
+          <button class="vip-modal-close" id="vipModalCloseBtn" type="button" aria-label="关闭会员弹层">×</button>
+        </div>
+        <div class="vip-user-row">
+          <div class="vip-user-avatar">🐷</div>
+          <div class="vip-user-meta">
+            <h5>生动的白云</h5>
+            <p>暂未开通会员</p>
+          </div>
+        </div>
+        <div class="vip-cycle-toggle" role="tablist" aria-label="套餐周期">
+          <button type="button" class="vip-cycle-btn active" id="vipMonthBtn" role="tab" aria-selected="true">月套餐</button>
+          <button type="button" class="vip-cycle-btn" id="vipYearBtn" role="tab" aria-selected="false">年套餐</button>
+        </div>
+        <div class="vip-plan-row" id="vipPlanRow"></div>
+        <div class="vip-agreement-row">
+          <input type="checkbox" id="vipAgreeChk" />
+          <span>同意《会员协议（含自动续费协议）》，到期自动续费，可在此页面进入续费管理关闭自动续费</span>
+        </div>
+        <button class="vip-pay-method" type="button">
+          <span class="vip-pay-method-main">
+            <img
+              class="vip-pay-alipay-ico"
+              src="./images/支付宝支付.png"
+              alt=""
+              width="24"
+              height="24"
+              decoding="async"
+            />
+            使用支付宝支付
+          </span>
+          <span class="vip-pay-method-change">更换 ›</span>
+        </button>
+        <button class="vip-buy-btn" id="vipBuyBtn" type="button">立即购买</button>
       </div>
 
       <div class="toast" id="toast" aria-live="polite"></div>

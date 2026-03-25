@@ -25,9 +25,9 @@
   ];
 
   const seedMessages = [
-    { id: "m1", title: "你的“护肤品主图套版”已生成完成", time: "刚刚", read: false },
-    { id: "m2", title: "系统已为你推荐更匹配的模板", time: "5 分钟前", read: false },
-    { id: "m3", title: "会员限时活动：首月 6 折", time: "1 小时前", read: true },
+    { id: "m1", title: "你的“护肤品主图套版”已生成完成", time: "刚刚", read: false, kind: "task", status: "done" },
+    { id: "m2", title: "系统已为你推荐更匹配的模板", time: "5 分钟前", read: false, kind: "notice" },
+    { id: "m3", title: "会员限时活动：首月 6 折", time: "1 小时前", read: true, kind: "notice" },
   ];
 
   const defaultState = {
@@ -49,8 +49,9 @@
       sourceImages: [],
     },
     user: {
-      name: "演示用户",
-      id: "demo_user_001",
+      loggedIn: false,
+      name: "",
+      id: "",
       vip: false,
     },
     cases: seedCases,
@@ -201,6 +202,14 @@
     }
   }
 
+  /** 从首页进入创作：始终先出现创作模式选择 */
+  function openCreateFromHome() {
+    state.create.modePicked = false;
+    saveState();
+    renderCreate();
+    setTab("create");
+  }
+
   function escapeHtml(text) {
     return String(text || "")
       .replaceAll("&", "&amp;")
@@ -252,6 +261,53 @@
 - 材质：棉混纺面料（亲肤透气，兼具柔软度与版型挺括感）
 - 颜色：黑底+浅灰+藏蓝撞色
 - 尺码：M、L、XL、XXL、XXXL（宽松码数，适配不同身高体重人群）`;
+
+  function maxUploadSlots() {
+    return state.create.mode === "真人换模特" ? 10 : 3;
+  }
+
+  function buildUploadPreviewItemsHtml(imgs) {
+    return imgs
+      .map(
+        (src, idx) =>
+          '<div class="upload-preview-item"><img src="' +
+          escapeHtml(src) +
+          '" alt="上传预览" /><button class="upload-preview-remove" type="button" data-remove-upload-index="' +
+          idx +
+          '" aria-label="删除图片">×</button></div>'
+      )
+      .join("");
+  }
+
+  function appendLocalImageFiles(fileList) {
+    const inputEl = $("#localImageInput");
+    const files = Array.from(fileList || []).filter((f) => f.type && f.type.startsWith("image/"));
+    const maxN = maxUploadSlots();
+    if (!files.length) return;
+    const existing = Array.from(state.create.sourceImages || []);
+    const remain = Math.max(0, maxN - existing.length);
+    if (remain <= 0) {
+      showToast("已达上传上限（最多" + maxN + "张），请先删除后再传");
+      if (inputEl) inputEl.value = "";
+      return;
+    }
+    const nextFiles = files.slice(0, remain);
+    const fileUrls = nextFiles.map((file) => URL.createObjectURL(file));
+    const merged = existing.concat(fileUrls).slice(0, maxN);
+    state.create.uploaded = true;
+    state.create.fileName = "";
+    state.create.sourceLabel = "local";
+    state.create.sourceImage = merged[0] || "./images/上衣原图.webp";
+    state.create.sourceImages = merged;
+    saveState();
+    renderCreate();
+    if (files.length > nextFiles.length) {
+      showToast("已追加" + nextFiles.length + "张，部分文件因上限未加入");
+    } else {
+      showToast(nextFiles.length === 1 ? "已追加1张图片" : "已追加" + nextFiles.length + "张图片");
+    }
+    if (inputEl) inputEl.value = "";
+  }
 
   function renderCases() {
     const listEl = $("#page-template .masonry");
@@ -325,15 +381,33 @@
         (m) =>
           '<div class="msg-item" data-msg-id="' +
           m.id +
+          '" data-msg-kind="' +
+          escapeHtml(m.kind || "notice") +
+          '" data-msg-status="' +
+          escapeHtml(m.status || "") +
           '"><div class="msg-dot ' +
           (m.read ? "" : "unread") +
-          '"></div><div class="msg-body"><div class="msg-title">' +
+          '"></div><div class="msg-body"><div class="msg-tag ' +
+          escapeHtml(m.kind || "notice") +
+          '">' +
+          (m.kind === "task" ? (m.status === "running" ? "任务进行中" : "任务通知") : "公告通知") +
+          '</div><div class="msg-title">' +
           escapeHtml(m.title) +
           '</div><div class="msg-time">' +
           escapeHtml(m.time) +
           "</div></div></div>"
       )
       .join("");
+  }
+
+  function pushMessage(payload) {
+    state.messages.unshift({
+      id: "m" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+      read: false,
+      time: "刚刚",
+      kind: "notice",
+      ...payload,
+    });
   }
 
   function renderCreate() {
@@ -344,12 +418,27 @@
     const title = uploadBox ? uploadBox.querySelector(".upload-title") : null;
     const desc = uploadBox ? uploadBox.querySelector(".upload-desc") : null;
     const uploadPreviewList = $("#uploadPreviewList");
+    const modelswapPreviewList = $("#modelswapPreviewList");
+    const wbFashion = $("#createWorkbenchFashion");
+    const wbModelSwap = $("#createWorkbenchModelSwap");
+    const modelswapDropzone = $("#modelswapDropzone");
+    const modelswapDropzoneInner = $("#modelswapDropzoneInner");
+    const modelswapAfterPanel = $("#modelswapAfterPanel");
     const mode = $("#createMode");
     const modePickButtons = $$("#createModeGate [data-create-mode-pick]");
     const size = $("#createSize");
     const clarity = $("#createClarity");
     const modelLevel = $("#createModel");
     const prompt = $("#createPrompt");
+    const modelswapPrompt = $("#modelswapPrompt");
+    const modelswapSize = $("#modelswapSize");
+    const modelswapClarity = $("#modelswapClarity");
+    const modelswapModelLevel = $("#modelswapModelLevel");
+
+    const isModelSwap = state.create.mode === "真人换模特";
+    if (createPage) createPage.classList.toggle("is-mode-model-swap", isModelSwap);
+    if (wbFashion) wbFashion.hidden = isModelSwap;
+    if (wbModelSwap) wbModelSwap.hidden = !isModelSwap;
 
     if (uploadBox) {
       uploadBox.style.borderStyle = state.create.uploaded ? "solid" : "dashed";
@@ -366,39 +455,71 @@
     if (clarity) clarity.value = state.create.clarity || "4K 超清";
     if (modelLevel) modelLevel.value = state.create.modelLevel || "高级模型";
     if (prompt) prompt.value = state.create.prompt;
+    if (modelswapPrompt) modelswapPrompt.value = state.create.prompt;
+    if (modelswapSize) modelswapSize.value = state.create.size;
+    if (modelswapClarity) modelswapClarity.value = state.create.clarity || "4K 超清";
+    if (modelswapModelLevel) modelswapModelLevel.value = state.create.modelLevel || "高级模型";
+
     if (uploadHint) uploadHint.style.display = state.create.uploaded ? "block" : "none";
+
+    const allImgs = state.create.sourceImages || [];
+    const fashionCap = 3;
+    const msCap = 10;
     if (uploadPreviewList) {
-      const imgs = (state.create.sourceImages || []).slice(0, 3);
-      uploadPreviewList.innerHTML = imgs
-        .map(
-          (src, idx) =>
-            '<div class="upload-preview-item"><img src="' +
-            escapeHtml(src) +
-            '" alt="上传预览" /><button class="upload-preview-remove" type="button" data-remove-upload-index="' +
-            idx +
-            '" aria-label="删除图片">×</button></div>'
-        )
-        .join("");
+      const imgs = allImgs.slice(0, fashionCap);
+      uploadPreviewList.innerHTML = buildUploadPreviewItemsHtml(imgs);
       uploadPreviewList.style.display = imgs.length ? "grid" : "none";
     }
+    if (modelswapPreviewList) {
+      const imgs = allImgs.slice(0, msCap);
+      modelswapPreviewList.innerHTML = buildUploadPreviewItemsHtml(imgs);
+      modelswapPreviewList.style.display = imgs.length ? "grid" : "none";
+    }
+    if (modelswapDropzone) {
+      modelswapDropzone.classList.toggle("has-images", allImgs.length > 0);
+    }
+    if (modelswapDropzoneInner) {
+      modelswapDropzoneInner.style.display = "";
+      const p = modelswapDropzoneInner.querySelector(".modelswap-drop-text");
+      if (p) {
+        if (allImgs.length) {
+          p.textContent = "点击或拖拽继续添加试穿图（最多10张）";
+        } else {
+          p.textContent = "拖拽或点击上传真人试穿图";
+        }
+      }
+    }
+    if (modelswapAfterPanel) {
+      modelswapAfterPanel.hidden = !isModelSwap || !allImgs.length;
+    }
+
     const needPickMode = !state.create.modePicked;
     if (createPage) createPage.classList.toggle("mode-required", needPickMode);
     if (modeGate) {
       modeGate.style.display = needPickMode ? "block" : "none";
       modeGate.setAttribute("aria-hidden", needPickMode ? "false" : "true");
     }
+
+    syncPowerUI();
   }
 
   function renderProfile() {
+    const profilePage = $("#page-profile");
     const avatar = $("#page-profile .profile-avatar");
     const nameEl = $("#page-profile .profile-info h3");
     const idEl = $("#page-profile .profile-info p");
+    const editBtn = $("#editProfileBtn");
     const vipBtn = $("#openVipBtn");
     const vipDesc = $("#page-profile .vip-text p");
+    const topProfileBtn = $("#profileBtn");
+    const isLoggedIn = !!state.user.loggedIn;
 
-    if (avatar) avatar.textContent = (state.user.name || "演").slice(0, 1);
-    if (nameEl) nameEl.textContent = state.user.name;
-    if (idEl) idEl.textContent = "ID: " + state.user.id;
+    if (profilePage) profilePage.classList.toggle("is-logged-out", !isLoggedIn);
+    if (avatar) avatar.textContent = isLoggedIn ? (state.user.name || "演").slice(0, 1) : "未";
+    if (nameEl) nameEl.textContent = isLoggedIn ? state.user.name : "未登录";
+    if (idEl) idEl.textContent = isLoggedIn ? "ID: " + state.user.id : "登录后可同步任务记录和素材";
+    if (editBtn) editBtn.textContent = isLoggedIn ? "编辑" : "立即登录";
+    if (topProfileBtn) topProfileBtn.textContent = isLoggedIn ? "我" : "登";
     if (vipBtn) vipBtn.textContent = state.user.vip ? "已开通" : "立即开通";
     if (vipDesc) {
       vipDesc.textContent = state.user.vip ? "你已开通会员，支持高清导出与批量处理" : "解锁高清导出、批量处理、商用授权";
@@ -416,13 +537,55 @@
 
   // Tab
   tabs.forEach((btn) => {
-    btn.addEventListener("click", () => setTab(btn.getAttribute("data-tab") || "home"));
+    btn.addEventListener("click", () => {
+      const next = btn.getAttribute("data-tab") || "home";
+      if (next === "create" && state.tab === "home") {
+        state.create.modePicked = false;
+        saveState();
+        renderCreate();
+      }
+      setTab(next);
+    });
   });
 
   // Search
   const searchInput = $("#searchInput");
+  const searchToggleBtn = $("#searchToggleBtn");
+  const headerEl = $(".header");
+  function openSearch() {
+    if (!searchInput) return;
+    searchInput.classList.remove("is-collapsed");
+    searchToggleBtn && searchToggleBtn.setAttribute("aria-label", "收起搜索");
+    setTimeout(() => searchInput.focus(), 0);
+  }
+  function closeSearch() {
+    if (!searchInput) return;
+    searchInput.classList.add("is-collapsed");
+    searchToggleBtn && searchToggleBtn.setAttribute("aria-label", "打开搜索");
+  }
+  if (searchToggleBtn) {
+    searchToggleBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!searchInput) return;
+      if (searchInput.classList.contains("is-collapsed")) {
+        openSearch();
+      } else {
+        closeSearch();
+      }
+    });
+  }
+  document.addEventListener("click", (e) => {
+    if (!searchInput || !headerEl) return;
+    if (searchInput.classList.contains("is-collapsed")) return;
+    if (headerEl.contains(e.target)) return;
+    closeSearch();
+  });
   if (searchInput) {
     searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        closeSearch();
+        return;
+      }
       if (e.key !== "Enter") return;
       const kw = (searchInput.value || "").trim();
       state.searchKeyword = kw;
@@ -442,7 +605,7 @@
     });
   }
   const startCreateBtn = $("#startCreateBtn");
-  if (startCreateBtn) startCreateBtn.addEventListener("click", () => setTab("create"));
+  if (startCreateBtn) startCreateBtn.addEventListener("click", () => openCreateFromHome());
 
   const viewCasesBtn = $("#viewCasesBtn");
   if (viewCasesBtn) viewCasesBtn.addEventListener("click", () => setTab("template"));
@@ -698,7 +861,7 @@
 
       if (action === "preview") {
         const beforeSrc = "./images/上衣原图.webp";
-        const afterImg = card.querySelector("img.hot-img");
+        const afterImg = card.querySelector("img.hot-img-after");
         const afterSrc = (afterImg && afterImg.getAttribute("src")) || "";
         openHotPreview(kind + " 预览", beforeSrc, afterSrc);
         return;
@@ -838,10 +1001,18 @@
   const createPrompt = $("#createPrompt");
   const createModeGate = $("#createModeGate");
   const createModeOptions = $("#createModeOptions");
+  const createPageEl = $("#page-create");
+  const modelswapDropzone = $("#modelswapDropzone");
+  const modelswapLocalBtn = $("#modelswapLocalBtn");
+  const modelswapBrandBtn = $("#modelswapBrandBtn");
+  const modelswapPrompt = $("#modelswapPrompt");
+  const modelswapSize = $("#modelswapSize");
+  const modelswapClarity = $("#modelswapClarity");
+  const modelswapModelLevel = $("#modelswapModelLevel");
+  const modelswapAiBtn = $("#modelswapAiBtn");
   const mockUploadBtn = $("#mockUploadBtn");
   const uploadPlusBtn = $("#uploadPlusBtn");
   const localImageInput = $("#localImageInput");
-  const uploadPreviewList = $("#uploadPreviewList");
   const aiAnalyzeBtn = $("#aiAnalyzeBtn");
   const inputGuideBtn = $("#inputGuideBtn");
   const startGenerateBtn = $("#startGenerateBtn");
@@ -874,11 +1045,13 @@
   const resultDetailImg = $("#resultDetailImg");
   const resultDetailCloseBtn = $("#resultDetailCloseBtn");
   const resultDetailDownloadBtn = $("#resultDetailDownloadBtn");
+  const createRight = $(".create-right");
   const createPowerHint = $("#createPowerHint");
   let selectedBrandSources = [];
   let generatedResults = [];
   let activeResultDetail = null;
   let progressTimer = null;
+  let hasStartedGeneration = false;
   const mainSubState = {
     enabled: true,
     types: {
@@ -935,6 +1108,7 @@
     if (!generatedResults.length) {
       createResultList.innerHTML = '<div class="result-empty"></div>';
       if (createResultMeta) createResultMeta.textContent = "";
+      syncCreateResultVisibility();
       return;
     }
     if (createResultMeta) {
@@ -966,6 +1140,15 @@
           "</article>"
       )
       .join("");
+    syncCreateResultVisibility();
+  }
+
+  function syncCreateResultVisibility() {
+    if (createRight) createRight.classList.toggle("is-pristine", !hasStartedGeneration);
+    if (exportAllBtn) {
+      const allDone = generatedResults.length > 0 && generatedResults.every((it) => it.status === "done");
+      exportAllBtn.style.display = allDone ? "inline-flex" : "none";
+    }
   }
 
   function startResultProgress() {
@@ -983,6 +1166,14 @@
       if (allDone) {
         clearInterval(progressTimer);
         progressTimer = null;
+        pushMessage({
+          title: "任务已完成：主副图创作全部完成，可查看详情并导出高清原图",
+          kind: "task",
+          status: "done",
+        });
+        saveState();
+        renderMessages();
+        syncCreateResultVisibility();
         showToast("全部图片创作完成");
       }
     }, 700);
@@ -1008,8 +1199,22 @@
   }
 
   function syncPowerUI() {
-    const totalImages = getMainSubImageCount();
     const perImage = getPowerPerImage();
+    if (state.create.mode === "真人换模特") {
+      const out = state.create.uploaded ? 4 : 0;
+      const totalPower = out * perImage;
+      if (createPowerHint) {
+        createPowerHint.textContent = out
+          ? `换模特预览${out}张 * 每张${perImage}点 = ${totalPower}点`
+          : "请先上传真人试穿图";
+      }
+      if (previewBtn) {
+        previewBtn.textContent = `开始生成(${totalPower}算力)`;
+        previewBtn.disabled = !state.create.uploaded;
+      }
+      return;
+    }
+    const totalImages = getMainSubImageCount();
     const totalPower = totalImages * perImage;
     if (createPowerHint) {
       createPowerHint.textContent = `主副图${totalImages}张 * 每张${perImage}点 = ${totalPower}点`;
@@ -1022,6 +1227,7 @@
 
   enableMouseDragScroll(createModeOptions);
   enableMouseDragPan(createPrompt);
+  enableMouseDragPan(modelswapPrompt);
 
   function syncMainSubUI() {
     if (!mainSubPanel) return;
@@ -1187,6 +1393,11 @@
       const modeName = pickBtn.getAttribute("data-create-mode-pick") || "电商主图";
       state.create.mode = modeName;
       state.create.modePicked = true;
+      if (modeName !== "真人换模特" && (state.create.sourceImages || []).length > 3) {
+        state.create.sourceImages = state.create.sourceImages.slice(0, 3);
+        state.create.sourceImage = state.create.sourceImages[0] || "./images/上衣原图.webp";
+        state.create.uploaded = state.create.sourceImages.length > 0;
+      }
       saveState();
       renderCreate();
       showToast("已选择模式：" + modeName);
@@ -1257,39 +1468,98 @@
       if (localImageInput) localImageInput.click();
     });
   }
-  if (localImageInput) {
-    localImageInput.addEventListener("change", () => {
-      const files = Array.from(localImageInput.files || []).slice(0, 3);
-      if (!files.length) return;
-      const existing = Array.from(state.create.sourceImages || []);
-      const remain = Math.max(0, 3 - existing.length);
-      if (remain <= 0) {
-        showToast("最多上传3张，请先删除后再上传");
-        localImageInput.value = "";
+  function openLocalImagePicker() {
+    if (!state.create.modePicked) {
+      showToast("请先选择创作模式");
+      return;
+    }
+    if (localImageInput) localImageInput.click();
+  }
+  if (modelswapDropzone) {
+    modelswapDropzone.addEventListener("click", () => openLocalImagePicker());
+    modelswapDropzone.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openLocalImagePicker();
+      }
+    });
+    ["dragenter", "dragover"].forEach((ev) => {
+      modelswapDropzone.addEventListener(ev, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+    });
+    modelswapDropzone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!state.create.modePicked) {
+        showToast("请先选择创作模式");
         return;
       }
-      const nextFiles = files.slice(0, remain);
-      const fileUrls = nextFiles.map((file) => URL.createObjectURL(file));
-      const merged = existing.concat(fileUrls).slice(0, 3);
-      state.create.uploaded = true;
-      state.create.fileName = "";
-      state.create.sourceLabel = "local";
-      state.create.sourceImage = merged[0] || "./images/上衣原图.webp";
-      state.create.sourceImages = merged;
-      saveState();
-      renderCreate();
-      if (files.length > nextFiles.length) {
-        showToast("已追加" + nextFiles.length + "张，最多保留3张");
-      } else {
-        showToast(nextFiles.length === 1 ? "已追加1张图片" : "已追加" + nextFiles.length + "张图片");
-      }
-      localImageInput.value = "";
+      const dt = e.dataTransfer;
+      if (!dt || !dt.files || !dt.files.length) return;
+      appendLocalImageFiles(dt.files);
     });
   }
-  if (uploadPreviewList) {
-    uploadPreviewList.addEventListener("click", (e) => {
+  if (modelswapLocalBtn) {
+    modelswapLocalBtn.addEventListener("click", () => openLocalImagePicker());
+  }
+  if (modelswapBrandBtn) {
+    modelswapBrandBtn.addEventListener("click", () => {
+      if (!state.create.modePicked) {
+        showToast("请先选择创作模式");
+        return;
+      }
+      openBrandModal();
+    });
+  }
+  if (modelswapPrompt) {
+    modelswapPrompt.addEventListener("input", () => {
+      state.create.prompt = modelswapPrompt.value;
+      saveState();
+    });
+  }
+  if (modelswapSize) {
+    modelswapSize.addEventListener("change", () => {
+      state.create.size = modelswapSize.value;
+      saveState();
+    });
+  }
+  if (modelswapClarity) {
+    modelswapClarity.addEventListener("change", () => {
+      state.create.clarity = modelswapClarity.value;
+      saveState();
+      syncPowerUI();
+    });
+  }
+  if (modelswapModelLevel) {
+    modelswapModelLevel.addEventListener("change", () => {
+      state.create.modelLevel = modelswapModelLevel.value;
+      saveState();
+      syncPowerUI();
+    });
+  }
+  if (modelswapAiBtn) {
+    modelswapAiBtn.addEventListener("click", () => {
+      if (!state.create.uploaded) {
+        showToast("请先上传试穿图");
+        return;
+      }
+      state.create.prompt = AI_ANALYSIS_PROMPT;
+      saveState();
+      renderCreate();
+      showToast("已生成AI分析参考文案");
+    });
+  }
+  if (localImageInput) {
+    localImageInput.addEventListener("change", () => {
+      appendLocalImageFiles(localImageInput.files);
+    });
+  }
+  if (createPageEl) {
+    createPageEl.addEventListener("click", (e) => {
       const removeBtn = e.target.closest("[data-remove-upload-index]");
-      if (!removeBtn) return;
+      if (!removeBtn || !createPageEl.contains(removeBtn)) return;
       const idx = Number(removeBtn.getAttribute("data-remove-upload-index"));
       if (!Number.isFinite(idx)) return;
       const imgs = Array.from(state.create.sourceImages || []);
@@ -1355,13 +1625,14 @@
         return;
       }
       const existing = Array.from(state.create.sourceImages || []);
-      const remain = Math.max(0, 3 - existing.length);
+      const cap = maxUploadSlots();
+      const remain = Math.max(0, cap - existing.length);
       if (remain <= 0) {
-        showToast("最多上传3张，请先删除后再选择");
+        showToast("已达上传上限（最多" + cap + "张），请先删除后再选择");
         return;
       }
       const picked = selectedBrandSources.slice(0, remain);
-      const merged = existing.concat(picked).slice(0, 3);
+      const merged = existing.concat(picked).slice(0, cap);
       state.create.uploaded = true;
       state.create.fileName = "";
       state.create.sourceLabel = "brand";
@@ -1380,12 +1651,14 @@
         progressTimer = null;
       }
       generatedResults = [];
+      hasStartedGeneration = false;
       state.create = {
         ...defaultState.create,
       };
       saveState();
       renderCreate();
       renderGeneratedResults();
+      syncCreateResultVisibility();
       showToast("已清空创作表单");
     });
   }
@@ -1399,27 +1672,55 @@
         showToast("请先上传原图");
         return;
       }
+      const cap = state.create.mode === "真人换模特" ? 10 : 3;
       const sourceImages = (state.create.sourceImages && state.create.sourceImages.length
         ? state.create.sourceImages
         : [state.create.sourceImage || "./images/上衣原图.webp"]
-      ).slice(0, 3);
+      ).slice(0, cap);
       const resultItems = [];
-      Object.entries(mainSubState.types).forEach(([key, item]) => {
-        if (!item.checked) return;
-        for (let i = 0; i < item.count; i += 1) {
+      if (state.create.mode === "真人换模特") {
+        const out = Math.min(4, Math.max(1, sourceImages.length));
+        for (let i = 0; i < out; i += 1) {
           resultItems.push({
-            id: key + "_" + i + "_" + Date.now(),
-            typeKey: key,
-            typeLabel: typeLabelByKey(key),
-            src: sourceImages[(resultItems.length + i) % sourceImages.length],
+            id: "modelswap_" + i + "_" + Date.now(),
+            typeKey: "modelswap",
+            typeLabel: "真人换模特",
+            src: sourceImages[i % sourceImages.length],
             progress: Math.floor(Math.random() * 12) + 3,
             status: "generating",
           });
         }
-      });
+      } else {
+        Object.entries(mainSubState.types).forEach(([key, item]) => {
+          if (!item.checked) return;
+          for (let i = 0; i < item.count; i += 1) {
+            resultItems.push({
+              id: key + "_" + i + "_" + Date.now(),
+              typeKey: key,
+              typeLabel: typeLabelByKey(key),
+              src: sourceImages[(resultItems.length + i) % sourceImages.length],
+              progress: Math.floor(Math.random() * 12) + 3,
+              status: "generating",
+            });
+          }
+        });
+      }
+      if (!resultItems.length) {
+        showToast("请先勾选主副图类型并设置张数");
+        return;
+      }
+      hasStartedGeneration = true;
       generatedResults = resultItems;
+      pushMessage({
+        title: "任务已开始：正在创作中，可在创作页查看进度",
+        kind: "task",
+        status: "running",
+      });
+      saveState();
+      renderMessages();
       renderGeneratedResults();
       startResultProgress();
+      syncCreateResultVisibility();
       showToast("开始创作中");
     });
   }
@@ -1483,6 +1784,7 @@
     });
   }
   renderGeneratedResults();
+  syncCreateResultVisibility();
   syncPowerUI();
 
   // Message tab
@@ -1508,6 +1810,16 @@
       hit.read = true;
       saveState();
       renderMessages();
+      if (hit.kind === "task" && hit.status === "running") {
+        setTab("create");
+        showToast("已跳转到进行中的任务");
+        return;
+      }
+      if (hit.kind === "task" && hit.status === "done") {
+        setTab("create");
+        showToast("已跳转到任务结果");
+        return;
+      }
       showToast("消息已读");
     });
   }
@@ -1525,36 +1837,344 @@
   const openVipBtn = $("#openVipBtn");
   const logoutBtn = $("#logoutBtn");
   const menuList = $(".menu-list");
+  const vipModalMask = $("#vipModalMask");
+  const vipModal = $("#vipModal");
+  const vipModalCloseBtn = $("#vipModalCloseBtn");
+  const vipPlanRow = $("#vipPlanRow");
+  const vipMonthBtn = $("#vipMonthBtn");
+  const vipYearBtn = $("#vipYearBtn");
+  const vipAgreeChk = $("#vipAgreeChk");
+  const vipBuyBtn = $("#vipBuyBtn");
+  let vipSelectedPlan = 0;
+  const vipFreeFeatures = [
+    "作图优先级:低",
+    "AI 生图同时发起1个任务",
+    "原价 购买算力加油包",
+    "图片下载:高清带水印",
+    "套图设计和模板:2个",
+    "模特图/商品图/AI修图/AI 视频:所有功能",
+  ];
+  const vipBasicPaidFeatures = [
+    "作图优先级:正常",
+    "AI生图同时发起10个任务",
+    "5折购买算力加油包",
+    "图片下载:高清无水印",
+    "套图设计和模板:无限量",
+    "模特图/商品图/POD素材/AI修图/AI 视频:所有功能",
+    "AI会话/敏感词检测:所有功能",
+  ];
+  const vipAdvancedPaidFeatures = [
+    "作图优先级:优先",
+    "AI 生图同时发起30个任务",
+    "4折购买算力加油包",
+    "图片下载:高清无水印",
+    "套图设计和模板:无限量",
+    "模特图/商品图/POD素材/AI修图/AI 视频:所有功能",
+    "AI会话/敏感词检测:所有功能",
+  ];
+  const vipPlans = {
+    month: [
+      {
+        name: "免费版",
+        price: "免费",
+        origin: "",
+        subNote: "",
+        summaryLines: ["7天有效", "250点算力"],
+        features: vipFreeFeatures,
+        tier: "free",
+      },
+      {
+        name: "基础版月会员",
+        price: "59元/月",
+        origin: "138.0元/月",
+        subNote: "",
+        summaryLines: ["每月3,500点算力"],
+        features: vipBasicPaidFeatures,
+        tier: "paid",
+      },
+      {
+        name: "高级版月会员",
+        price: "229元/月",
+        origin: "589.0元/月",
+        subNote: "",
+        summaryLines: ["每月21,000点算力"],
+        features: vipAdvancedPaidFeatures,
+        tier: "paid",
+      },
+    ],
+    year: [
+      {
+        name: "免费版",
+        price: "免费",
+        origin: "",
+        subNote: "7天有效",
+        summaryLines: ["250点算力"],
+        features: vipFreeFeatures,
+        tier: "free",
+      },
+      {
+        name: "基础版年会员",
+        price: "659元/年",
+        origin: "1548.0元/年",
+        subNote: "",
+        summaryLines: ["每年42,000点算力"],
+        features: vipBasicPaidFeatures,
+        tier: "paid",
+      },
+      {
+        name: "高级版年会员",
+        price: "2890元/年",
+        origin: "7068.0元/年",
+        subNote: "",
+        summaryLines: ["每年252,000点算力"],
+        features: vipAdvancedPaidFeatures,
+        tier: "paid",
+      },
+    ],
+  };
+  let vipCycle = "month";
+
+  function renderVipPlans() {
+    if (!vipPlanRow) return;
+    const current = vipPlans[vipCycle] || [];
+    vipPlanRow.innerHTML = current
+      .map(
+        (it, idx) => {
+          const summaryHtml = (it.summaryLines || [])
+            .map((line) => '<div class="vip-card-day-line">' + escapeHtml(line) + "</div>")
+            .join("");
+          const subNoteHtml = it.subNote
+            ? '<div class="vip-card-subnote">' + escapeHtml(it.subNote) + "</div>"
+            : "";
+          const feats = it.features || [];
+          return (
+            '<button class="vip-card ' +
+            (idx === vipSelectedPlan ? "active" : "") +
+            '" type="button" data-vip-plan="' +
+            idx +
+            '"><div class="vip-card-title">' +
+            escapeHtml(it.name) +
+            '</div><div class="vip-card-price">' +
+            escapeHtml(it.price) +
+            "</div>" +
+            (it.origin ? '<div class="vip-card-origin">' + escapeHtml(it.origin) + "</div>" : "") +
+            subNoteHtml +
+            '<div class="vip-card-day">' +
+            summaryHtml +
+            '</div><ul class="vip-card-list vip-card-list--checks">' +
+            feats.map((f) => "<li>" + escapeHtml(f) + "</li>").join("") +
+            "</ul></button>"
+          );
+        }
+      )
+      .join("");
+  }
+
+  function openVipModal() {
+    if (!vipModalMask || !vipModal) return;
+    vipCycle = "month";
+    vipSelectedPlan = 0;
+    if (vipMonthBtn) {
+      vipMonthBtn.classList.add("active");
+      vipMonthBtn.setAttribute("aria-selected", "true");
+    }
+    if (vipYearBtn) {
+      vipYearBtn.classList.remove("active");
+      vipYearBtn.setAttribute("aria-selected", "false");
+    }
+    renderVipPlans();
+    if (vipAgreeChk) vipAgreeChk.checked = false;
+    vipModalMask.classList.add("show");
+    vipModal.classList.add("show");
+    vipModalMask.setAttribute("aria-hidden", "false");
+    vipModal.setAttribute("aria-hidden", "false");
+  }
+
+  function closeVipModal() {
+    if (!vipModalMask || !vipModal) return;
+    vipModalMask.classList.remove("show");
+    vipModal.classList.remove("show");
+    vipModalMask.setAttribute("aria-hidden", "true");
+    vipModal.setAttribute("aria-hidden", "true");
+  }
+  const loginMask = $("#loginMask");
+  const loginSheet = $("#loginSheet");
+  const loginBackBtn = $("#loginBackBtn");
+  const loginCloseBtn = $("#loginCloseBtn");
+  const quickLoginBtn = $("#quickLoginBtn");
+  const otherPhoneLoginBtn = $("#otherPhoneLoginBtn");
+  const wechatLoginBtn = $("#wechatLoginBtn");
+  const wechatDoneBtn = $("#wechatDoneBtn");
+  const loginAgreeChk = $("#loginAgreeChk");
+  const loginSheetTitle = $("#loginSheetTitle");
+  const loginOptionsView = $("#loginOptionsView");
+  const wechatFollowView = $("#wechatFollowView");
+
+  function openLoginSheet() {
+    if (!loginMask || !loginSheet) return;
+    if (loginOptionsView) loginOptionsView.style.display = "grid";
+    if (wechatFollowView) wechatFollowView.style.display = "none";
+    if (loginSheetTitle) loginSheetTitle.textContent = "本机号码一键登录";
+    loginMask.classList.add("show");
+    loginSheet.classList.add("show");
+    loginMask.setAttribute("aria-hidden", "false");
+    loginSheet.setAttribute("aria-hidden", "false");
+  }
+  function closeLoginSheet() {
+    if (!loginMask || !loginSheet) return;
+    loginMask.classList.remove("show");
+    loginSheet.classList.remove("show");
+    loginMask.setAttribute("aria-hidden", "true");
+    loginSheet.setAttribute("aria-hidden", "true");
+  }
+  function openWechatFollowView() {
+    if (loginOptionsView) loginOptionsView.style.display = "none";
+    if (wechatFollowView) wechatFollowView.style.display = "grid";
+    if (loginSheetTitle) loginSheetTitle.textContent = "微信登录";
+  }
+  function backToLoginOptions() {
+    if (wechatFollowView && wechatFollowView.style.display === "grid") {
+      if (loginOptionsView) loginOptionsView.style.display = "grid";
+      if (wechatFollowView) wechatFollowView.style.display = "none";
+      if (loginSheetTitle) loginSheetTitle.textContent = "本机号码一键登录";
+      return;
+    }
+    closeLoginSheet();
+  }
+  function ensureAgreed() {
+    if (!loginAgreeChk || loginAgreeChk.checked) return true;
+    showToast("请先勾选同意协议");
+    return false;
+  }
+  function doLogin(name, id) {
+    if (!ensureAgreed()) return;
+    state.user.loggedIn = true;
+    state.user.name = name;
+    state.user.id = id;
+    saveState();
+    renderProfile();
+    closeLoginSheet();
+    showToast("登录成功");
+  }
 
   if (editProfileBtn) {
     editProfileBtn.addEventListener("click", () => {
+      if (!state.user.loggedIn) {
+        openLoginSheet();
+        return;
+      }
       state.user.name = state.user.name === "演示用户" ? "电商创作者" : "演示用户";
       saveState();
       renderProfile();
       showToast("资料已更新");
     });
   }
+  if (loginMask) loginMask.addEventListener("click", closeLoginSheet);
+  if (loginCloseBtn) loginCloseBtn.addEventListener("click", closeLoginSheet);
+  if (loginBackBtn) loginBackBtn.addEventListener("click", backToLoginOptions);
+  if (quickLoginBtn) {
+    quickLoginBtn.addEventListener("click", () => {
+      doLogin("本机用户", "mobile_quick_001");
+    });
+  }
+  if (otherPhoneLoginBtn) {
+    otherPhoneLoginBtn.addEventListener("click", () => {
+      doLogin("手机号用户", "mobile_other_001");
+    });
+  }
+  if (wechatLoginBtn) {
+    wechatLoginBtn.addEventListener("click", () => {
+      openWechatFollowView();
+    });
+  }
+  if (wechatDoneBtn) {
+    wechatDoneBtn.addEventListener("click", () => {
+      doLogin("微信用户", "wechat_001");
+    });
+  }
   if (openVipBtn) {
     openVipBtn.addEventListener("click", () => {
-      state.user.vip = !state.user.vip;
+      if (!state.user.loggedIn) {
+        openLoginSheet();
+        return;
+      }
+      openVipModal();
+    });
+  }
+  if (vipModalMask) vipModalMask.addEventListener("click", closeVipModal);
+  if (vipModalCloseBtn) vipModalCloseBtn.addEventListener("click", closeVipModal);
+  enableMouseDragScroll(vipPlanRow);
+  if (vipPlanRow) {
+    vipPlanRow.addEventListener("click", (e) => {
+      const plan = e.target.closest("[data-vip-plan]");
+      if (!plan) return;
+      const idx = Number(plan.getAttribute("data-vip-plan"));
+      if (!Number.isFinite(idx)) return;
+      vipSelectedPlan = idx;
+      renderVipPlans();
+    });
+  }
+  if (vipMonthBtn) {
+    vipMonthBtn.addEventListener("click", () => {
+      vipCycle = "month";
+      vipMonthBtn.classList.add("active");
+      vipMonthBtn.setAttribute("aria-selected", "true");
+      if (vipYearBtn) {
+        vipYearBtn.classList.remove("active");
+        vipYearBtn.setAttribute("aria-selected", "false");
+      }
+      vipSelectedPlan = 0;
+      renderVipPlans();
+    });
+  }
+  if (vipYearBtn) {
+    vipYearBtn.addEventListener("click", () => {
+      vipCycle = "year";
+      vipYearBtn.classList.add("active");
+      vipYearBtn.setAttribute("aria-selected", "true");
+      if (vipMonthBtn) {
+        vipMonthBtn.classList.remove("active");
+        vipMonthBtn.setAttribute("aria-selected", "false");
+      }
+      vipSelectedPlan = 0;
+      renderVipPlans();
+    });
+  }
+  if (vipBuyBtn) {
+    vipBuyBtn.addEventListener("click", () => {
+      const current = vipPlans[vipCycle] || [];
+      const sel = current[vipSelectedPlan];
+      if (sel && sel.tier === "free") {
+        showToast("请选择会员套餐");
+        return;
+      }
+      if (vipAgreeChk && !vipAgreeChk.checked) {
+        showToast("请先同意会员协议");
+        return;
+      }
+      state.user.vip = true;
       saveState();
       renderProfile();
-      showToast(state.user.vip ? "会员开通成功" : "已关闭会员状态");
+      closeVipModal();
+      showToast("会员开通成功");
     });
   }
   if (logoutBtn) {
     logoutBtn.addEventListener("click", () => {
-      localStorage.removeItem(APP_KEY);
-      Object.assign(state, cloneDefaultState());
-      renderAll();
-      setTab("home");
-      showToast("已退出并重置本地数据");
+      state.user = { ...defaultState.user };
+      saveState();
+      renderProfile();
+      showToast("已退出登录");
     });
   }
   if (menuList) {
     menuList.addEventListener("click", (e) => {
       const item = e.target.closest(".menu-item[data-menu]");
       if (!item) return;
+      if (!state.user.loggedIn) {
+        openLoginSheet();
+        return;
+      }
       showToast("打开：" + (item.getAttribute("data-menu") || ""));
     });
   }
