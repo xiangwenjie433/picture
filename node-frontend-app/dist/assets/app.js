@@ -1010,6 +1010,8 @@
 
   const featureGrid = $("#featureGrid");
   if (featureGrid) {
+    // 鼠标拖拽翻页（与触摸翻页一致）
+    enableMouseDragScroll(featureGrid);
     featureGrid.addEventListener("click", (e) => {
       const card = e.target.closest(".tool-item[data-create-mode], .feature-card[data-create-mode]");
       if (!card || card.classList.contains("placeholder")) return;
@@ -1412,6 +1414,7 @@
   const brandModal = $("#brandModal");
   const brandModalCloseBtn = $("#brandModalCloseBtn");
   const brandModalConfirmBtn = $("#brandModalConfirmBtn");
+  const brandModalList = $("#brandModalList") || $(".brand-modal-list");
   const mainSubPanel = $(".main-sub-panel");
   const mainSubToggle = $("#mainSubToggle");
   const mainSubInfoBtn = $("#mainSubInfoBtn");
@@ -1461,6 +1464,46 @@
     modelSelected: [],
     poseSelected: [],
   };
+
+  // 场景/模特/姿势选择弹窗：本地上传的选项（瀑布图展示）
+  const localMainSubAssets = {
+    scene: [],
+    model: [],
+    pose: [],
+  };
+  const localMainSubThumbByName = {};
+  let mainSubLocalPickerInput = null;
+
+  function ensureMainSubLocalPickerInput() {
+    if (mainSubLocalPickerInput) return mainSubLocalPickerInput;
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.multiple = true;
+    input.style.display = "none";
+    input.addEventListener("change", () => {
+      if (!pickerKind) return;
+      const files = Array.from(input.files || []);
+      if (!files.length) return;
+      const kind = pickerKind;
+      const now = Date.now();
+      files.forEach((file, idx) => {
+        const url = URL.createObjectURL(file);
+        const name = `local_${kind}_${now}_${idx}`;
+        localMainSubAssets[kind] = localMainSubAssets[kind] || [];
+        localMainSubAssets[kind].push({ name, src: url });
+        localMainSubThumbByName[name] = url;
+      });
+      showToast("已上传" + files.length + "张图片（" + kind + "）");
+      // 允许再次选择同一文件
+      input.value = "";
+      // 刷新当前弹窗内容：把新上传的选项加入瀑布图
+      openMainSubPicker(kind, { keepPickerSelected: true });
+    });
+    document.body.appendChild(input);
+    mainSubLocalPickerInput = input;
+    return mainSubLocalPickerInput;
+  }
   function resetFashionWorkbenchMainSubTypes() {
     Object.keys(mainSubState.types).forEach((k) => {
       mainSubState.types[k].checked = false;
@@ -1468,6 +1511,36 @@
     });
     mainSubState.sceneSelected = [];
     mainSubState.modelSelected = [];
+  }
+  function renderBrandModalList() {
+    if (!brandModalList) return;
+    const list = state.user && Array.isArray(state.user.brandAssets) ? state.user.brandAssets : [];
+    const filtered = list
+      .filter((a) => a && a.src)
+      .sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
+
+    if (!filtered.length) {
+      brandModalList.innerHTML = '<div class="result-empty">暂无品牌素材，请先到“我的品牌”上传</div>';
+      return;
+    }
+
+    brandModalList.innerHTML = filtered
+      .map((a) => {
+        const src = String(a.src || "");
+        const cat = a.categoryKey || "";
+        const from = a.from || "";
+        const label = cat ? `${from ? from + " · " : ""}${cat}` : (from || "品牌素材");
+        return `
+          <button class="brand-item m-card" type="button" data-brand-src="${escapeHtml(src)}" data-brand-name="${escapeHtml(
+            label
+          )}">
+            <div class="m-thumb">
+              <img class="m-img" src="${escapeHtml(src)}" alt="${escapeHtml(label)}" />
+            </div>
+          </button>
+        `;
+      })
+      .join("");
   }
 
   /** 应用创作模式（与创作模式选择门一致）：副作用 + 状态 + 刷新。fromSmartTool 为 true 时不弹 Toast。 */
@@ -1774,15 +1847,62 @@
     }
     if (pickSceneBtn) {
       pickSceneBtn.classList.toggle("active", mainSubState.sceneSelected.length > 0);
-      pickSceneBtn.textContent = mainSubState.sceneSelected.length
-        ? `场景：已选${mainSubState.sceneSelected.length}项`
-        : "+ 场景（可选）";
+      const selected = mainSubState.sceneSelected || [];
+      const pool = [
+        "./images/服务案例.png",
+        "./images/首页.png",
+        "./images/消息.png",
+        "./images/我的.png",
+        "./images/设置.png",
+        "./images/会员.png",
+      ];
+      if (!selected.length) {
+        pickSceneBtn.textContent = "+ 场景（可选）";
+      } else {
+        const label = `场景：已选${selected.length}项`;
+        const maxThumb = 3;
+        const thumbs = selected.slice(0, maxThumb).map((name, idx) => {
+          // 有本地上传的选项时，优先使用上传图片；否则用 pool 兜底展示
+          const src = localMainSubThumbByName[name] || pool[idx % pool.length];
+          return `<img class="main-sub-mini-thumb" src="${escapeHtml(src)}" alt="" aria-hidden="true" />`;
+        });
+        const more = selected.length > maxThumb ? `<span class="main-sub-mini-more">+${selected.length - maxThumb}</span>` : "";
+        pickSceneBtn.innerHTML = `
+          <span class="main-sub-mini-thumbs" aria-hidden="true">
+            ${thumbs.join("")}${more}
+          </span>
+          <span class="main-sub-optional-text">${escapeHtml(label)}</span>
+        `;
+      }
     }
     if (pickModelBtn) {
       pickModelBtn.classList.toggle("active", mainSubState.modelSelected.length > 0);
-      pickModelBtn.textContent = mainSubState.modelSelected.length
-        ? `模特：已选${mainSubState.modelSelected.length}项`
-        : "+ 模特（可选）";
+      const selected = mainSubState.modelSelected || [];
+      const pool = [
+        "./images/创作者中心.png",
+        "./images/服务案例.png",
+        "./images/我的.png",
+        "./images/首页.png",
+        "./images/消息.png",
+        "./images/设置.png",
+      ];
+      if (!selected.length) {
+        pickModelBtn.textContent = "+ 模特（可选）";
+      } else {
+        const label = `模特：已选${selected.length}项`;
+        const maxThumb = 3;
+        const thumbs = selected.slice(0, maxThumb).map((name, idx) => {
+          const src = localMainSubThumbByName[name] || pool[idx % pool.length];
+          return `<img class="main-sub-mini-thumb" src="${escapeHtml(src)}" alt="" aria-hidden="true" />`;
+        });
+        const more = selected.length > maxThumb ? `<span class="main-sub-mini-more">+${selected.length - maxThumb}</span>` : "";
+        pickModelBtn.innerHTML = `
+          <span class="main-sub-mini-thumbs" aria-hidden="true">
+            ${thumbs.join("")}${more}
+          </span>
+          <span class="main-sub-optional-text">${escapeHtml(label)}</span>
+        `;
+      }
     }
     syncAiWearModelRow();
     syncPosePickerRow();
@@ -1790,19 +1910,20 @@
     syncPowerUI();
   }
 
-  function openMainSubPicker(kind) {
+  function openMainSubPicker(kind, opts) {
     if (kind === "model" && state.create.mode === "模特换场景") return;
     if (!mainSubPickerMask || !mainSubPickerModal || !mainSubPickerList || !mainSubPickerTitle) return;
+    const pickerOpts = opts || {};
     pickerKind = kind;
-    const options =
-      kind === "scene" ? sceneOptions : kind === "pose" ? poseOptions : modelOptions;
-    pickerSelected = Array.from(
-      kind === "scene"
-        ? mainSubState.sceneSelected
-        : kind === "pose"
-          ? mainSubState.poseSelected
-          : mainSubState.modelSelected
-    );
+    const baseOptions = kind === "scene" ? sceneOptions : kind === "pose" ? poseOptions : modelOptions;
+    const localNames = (localMainSubAssets[kind] || []).map((a) => a.name);
+    // 本地上传的选项放在前面：确保“上传后回显”在瀑布流上方可见
+    let options = localNames.concat(baseOptions);
+    if (!pickerOpts.keepPickerSelected) {
+      pickerSelected = Array.from(
+        kind === "scene" ? mainSubState.sceneSelected : kind === "pose" ? mainSubState.poseSelected : mainSubState.modelSelected
+      );
+    }
     mainSubPickerTitle.textContent =
       kind === "scene"
         ? "选择场景"
@@ -1811,14 +1932,73 @@
           : state.create.mode === "AI穿衣"
             ? "选择穿衣模特"
             : "选择模特";
-    mainSubPickerList.innerHTML = options
-      .map(
-        (name) =>
-          `<button class="brand-item ${pickerSelected.includes(name) ? "selected" : ""}" type="button" data-main-sub-pick="${escapeHtml(
-            name
-          )}"><span>${escapeHtml(name)}</span></button>`
-      )
+    const thumbPool =
+      kind === "scene"
+        ? [
+            "./images/服务案例.png",
+            "./images/首页.png",
+            "./images/消息.png",
+            "./images/我的.png",
+            "./images/设置.png",
+            "./images/会员.png",
+          ]
+        : kind === "model"
+          ? [
+              "./images/创作者中心.png",
+              "./images/服务案例.png",
+              "./images/我的.png",
+              "./images/首页.png",
+              "./images/消息.png",
+              "./images/设置.png",
+            ]
+          : ["./images/创作者中心.png", "./images/服务案例.png", "./images/我的.png", "./images/首页.png"];
+
+    const getThumbSrc = (name, idx) =>
+      localMainSubThumbByName[name] || thumbPool[idx % thumbPool.length] || "./images/服务案例.png";
+
+    const selectedSet = new Set(pickerSelected);
+    const uploadTileHtml = `
+      <button class="main-sub-upload-tile m-card" type="button" aria-label="上传" data-main-sub-upload="1">
+        <div class="main-sub-upload-inner">
+          <div class="main-sub-upload-plus" aria-hidden="true">+</div>
+          <div class="main-sub-upload-text">本地上传</div>
+        </div>
+      </button>
+    `;
+
+    const optionCardsHtml = options
+      .map((name, idx) => {
+        const selected = selectedSet.has(name);
+        const isLocal = !!localMainSubThumbByName[name];
+        const src = getThumbSrc(name, idx);
+        const tagHtml = isLocal ? '<span class="main-sub-local-tag">本地</span>' : "";
+        return `
+          <button
+            class="main-sub-option m-card ${selected ? "is-selected" : ""}"
+            type="button"
+            data-main-sub-pick="${escapeHtml(name)}"
+            aria-label="${escapeHtml(name)}"
+          >
+            <div class="m-thumb">
+              <img class="m-img" src="${escapeHtml(src)}" alt="${escapeHtml(name)}" />
+              ${tagHtml}
+            </div>
+          </button>
+        `;
+      })
       .join("");
+
+    mainSubPickerList.innerHTML = `
+      <div class="main-sub-masonry">
+        ${uploadTileHtml}
+        ${optionCardsHtml}
+      </div>
+    `;
+    // 允许鼠标拖动上下滚动：优先绑定在瀑布流容器上
+    const masonryEl = mainSubPickerList.querySelector(".main-sub-masonry");
+    if (masonryEl) masonryEl.scrollTop = 0; // 上传后重置位置，避免新卡片“看不到”
+    if (masonryEl) enableMouseDragPan(masonryEl);
+    else enableMouseDragPan(mainSubPickerList);
     mainSubPickerMask.classList.add("show");
     mainSubPickerModal.classList.add("show");
     mainSubPickerMask.setAttribute("aria-hidden", "false");
@@ -1890,16 +2070,21 @@
   if (mainSubPickerMask) mainSubPickerMask.addEventListener("click", closeMainSubPicker);
   if (mainSubPickerList) {
     mainSubPickerList.addEventListener("click", (e) => {
+      const uploadBtn = e.target.closest("[data-main-sub-upload]");
+      if (uploadBtn) {
+        ensureMainSubLocalPickerInput().click();
+        return;
+      }
       const btn = e.target.closest("[data-main-sub-pick]");
       if (!btn) return;
       const name = btn.getAttribute("data-main-sub-pick") || "";
       const idx = pickerSelected.indexOf(name);
       if (idx >= 0) {
         pickerSelected.splice(idx, 1);
-        btn.classList.remove("selected");
+        btn.classList.remove("is-selected");
       } else {
         pickerSelected.push(name);
-        btn.classList.add("selected");
+        btn.classList.add("is-selected");
       }
     });
   }
@@ -2561,6 +2746,7 @@
     if (!brandModalMask || !brandModal) return;
     selectedBrandSources = [];
     $$(".brand-item.selected").forEach((el) => el.classList.remove("selected"));
+    renderBrandModalList();
     brandModalMask.classList.add("show");
     brandModal.classList.add("show");
     brandModalMask.setAttribute("aria-hidden", "false");

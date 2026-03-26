@@ -2090,11 +2090,123 @@ body{
   padding:10px 8px;
   font-size:12px;
   font-weight:700;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
 }
 .main-sub-optional.active{
   border-color:#ffcf9f;
   background:#fff7ef;
   color:#d45d00;
+}
+
+.main-sub-mini-thumbs{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+}
+.main-sub-mini-thumb{
+  width:16px;
+  height:16px;
+  border-radius:4px;
+  object-fit:contain;
+  display:block;
+}
+.main-sub-mini-more{
+  font-size:11px;
+  font-weight:900;
+  color:inherit;
+}
+.main-sub-optional-text{
+  margin-left:6px;
+  line-height:1;
+  display:inline-block;
+  transform:translateY(0);
+}
+.main-sub-option{
+  border:0;
+  background:transparent;
+  padding:0;
+  display:inline-block;
+  width:100%;
+  cursor:pointer;
+  break-inside:avoid;
+  margin:0 0 10px;
+  vertical-align:top;
+}
+.main-sub-option .m-thumb{
+  border-radius:14px;
+}
+.main-sub-option.is-selected .m-thumb{
+  outline:2px solid rgba(59,130,246,.55);
+  outline-offset:-2px;
+}
+.main-sub-masonry{
+  max-height:none;
+  overflow:visible;
+}
+.main-sub-upload-tile{
+  border:0;
+  background:transparent;
+  padding:0;
+  width:100%;
+  break-inside:avoid;
+  margin:0 0 10px;
+  vertical-align:top;
+  cursor:pointer;
+}
+.main-sub-upload-inner{
+  width:100%;
+  aspect-ratio:1/1;
+  border-radius:14px;
+  border:1px dashed #e5e7eb;
+  background:#f8fafc;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+}
+.main-sub-upload-plus{
+  width:38px;
+  height:38px;
+  border-radius:12px;
+  display:grid;
+  place-items:center;
+  background:rgba(99,102,241,.08);
+  color:rgba(79,70,229,1);
+  font-weight:900;
+  font-size:22px;
+  line-height:1;
+}
+.main-sub-upload-text{
+  font-size:11px;
+  color:#98a2b3;
+  font-weight:800;
+  text-align:center;
+  line-height:1.2;
+  padding:0 8px;
+}
+.main-sub-local-tag{
+  position:absolute;
+  left:8px;
+  top:8px;
+  background:rgba(99,102,241,.95);
+  color:#fff;
+  border-radius:999px;
+  padding:2px 7px;
+  font-size:10px;
+  font-weight:900;
+  z-index:2;
+}
+#mainSubPickerList{
+  display:block !important;
+  gap:0;
+}
+.main-sub-masonry{
+  columns:2;
+  column-gap:10px;
 }
 .create-result-toolbar{
   display:flex;
@@ -2304,6 +2416,33 @@ body{
   pointer-events:auto;
   transform:translate(-50%,-50%);
 }
+
+/* 场景/模特/姿势选择弹窗：半屏可滚动（APP 风格） */
+#mainSubPickerModal{
+  width:min(92%, 360px);
+  max-height:min(62vh, 520px);
+  display:flex;
+  flex-direction:column;
+}
+#mainSubPickerModal .brand-modal-header{flex:0 0 auto;}
+#mainSubPickerModal .brand-modal-footer{flex:0 0 auto;}
+#mainSubPickerModal .brand-modal-list{
+  flex:1 1 auto;
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+  position:relative;
+}
+#mainSubPickerModal .brand-modal-list::after{
+  content:"";
+  position:sticky;
+  left:0;
+  right:0;
+  bottom:0;
+  height:22px;
+  display:block;
+  background:linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,.95));
+  pointer-events:none;
+}
 .brand-modal-header{
   display:flex;
   justify-content:space-between;
@@ -2326,8 +2465,11 @@ body{
 }
 .brand-modal-list{
   padding:10px 12px 12px;
-  display:grid;
-  gap:8px;
+  display:block;
+}
+.brand-modal-list.masonry{
+  columns:2;
+  column-gap:10px;
 }
 .brand-item{
   border:1px solid #e9edf3;
@@ -2338,6 +2480,28 @@ body{
   align-items:center;
   gap:8px;
   text-align:left;
+}
+.brand-modal-list.masonry .brand-item{
+  /* 用 columns 实现瀑布流：每张卡在列内流式排列 */
+  border:0;
+  background:transparent;
+  padding:0;
+  display:inline-block;
+  width:100%;
+  break-inside:avoid;
+  margin:0 0 10px;
+  vertical-align:top;
+}
+.brand-modal-list.masonry .brand-item img{
+  /* 覆盖原来品牌库弹窗里的固定 40x40 尺寸 */
+  width:100%;
+  height:auto;
+  border-radius:14px;
+}
+.brand-modal-list.masonry .brand-item.selected{
+  outline:2px solid rgba(255,138,43,1);
+  outline-offset:-2px;
+  background:transparent;
 }
 .brand-item.selected{
   border-color:#ffcf9f;
@@ -3358,6 +3522,29 @@ body{
 .account-page-body{
   padding:10px 0 18px;
 }
+
+/* 算力记录/订单中心（二级页面）顶部往下移一点 + 字体适配 */
+#powerRecordsPage .account-page-header,
+#ordersPage .account-page-header{
+  height:60px;
+  padding-top:6px;
+  padding-bottom:0;
+}
+#powerRecordsPage .account-page-header h4,
+#ordersPage .account-page-header h4{
+  font-size:clamp(15px, 3.6vw, 17px);
+}
+#powerRecordsPage .account-back-btn,
+#ordersPage .account-back-btn{
+  width:clamp(34px, 8.5vw, 40px);
+  height:clamp(34px, 8.5vw, 40px);
+  font-size:clamp(26px, 6vw, 34px);
+  line-height:1;
+}
+#powerRecordsPage .account-page-body,
+#ordersPage .account-page-body{
+  padding-top:6px;
+}
 .account-item{
   width:100%;
   border:0;
@@ -3597,6 +3784,21 @@ body{
   font-size:16px;
   font-weight:900;
   color:#111827;
+}
+
+/* 我的品牌（二级页面）顶部往下移一点 + 字体自适配 */
+#brandPage .brand-page-header{
+  padding-top:14px;
+  padding-bottom:8px;
+}
+#brandPage .brand-page-header h4{
+  font-size:clamp(15px, 3.6vw, 17px);
+}
+#brandPage .brand-back-btn{
+  width:clamp(32px, 8vw, 38px);
+  height:clamp(32px, 8vw, 38px);
+  font-size:clamp(20px, 5.5vw, 26px);
+  line-height:clamp(32px, 8vw, 38px);
 }
 .brand-header-spacer{
   width:34px;
